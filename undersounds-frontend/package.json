@@ -1,0 +1,39 @@
+{
+  "name": "undersounds-frontend",
+  "version": "1.0.0",
+  "description": "UnderSounds - A music store web application for exploring, purchasing, and managing music.",
+  "main": "src/index.jsx",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.4.7",
+    "@mui/material": "^6.4.7",
+    "axios": "^1.8.4",
+    "jwt-decode": "^3.1.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.0.0",
+    "react-slick": "^0.30.3",
+    "slick-carousel": "^1.8.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^7.0.0",
+    "eslint-plugin-react": "^7.0.0",
+    "vite": "^6.2.1"
+  },
+  "keywords": [
+    "music",
+    "store",
+    "react",
+    "frontend"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -1,0 +1,11 @@
+{
+  "dbVersion": 36,
+  "colecciones": [
+    "albums",
+    "tshirts",
+    "noticiasMusica",
+    "artists",
+    "accounts",
+    "tracks"
+  ]
+}

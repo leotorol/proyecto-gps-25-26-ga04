@@ -1,0 +1,373 @@
+openapi: 3.0.0
+info:
+  title: UnderSounds — Estadísticas y Recomendaciones (simple)
+  version: "1.0.0"
+  description: >
+    Endpoints para ingesta de eventos, métricas/KPIs básicas, rankings y recomendaciones
+    heurísticas (basadas en género/likes). Diseñado para implementaciones sencillas
+    (cola opcional para ingesta; recomendaciones calculadas por reglas).
+servers:
+  - url: http://localhost:5000/api
+
+paths:
+  /stats/events:
+    post:
+      summary: Enviar evento de usuario (ingesta)
+      description: Acepta eventos desde frontend. Se puede encolar o persistir directamente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        "202":
+          description: Evento aceptado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ack'
+        "400":
+          description: Petición inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stats/artist/{artistId}/kpis:
+    get:
+      summary: KPIs resumidos para un artista
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: KPIs agregados (plays, likes, followers, revenue)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistKPI'
+        "404":
+          description: Artista no encontrado
+
+  /stats/top:
+    get:
+      summary: Rankings simples (top) por tipo
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [track, album, artist]
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: week
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Lista ordenada por métricas agregadas (plays / ventas)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RankingItem'
+
+  /stats/trending:
+    get:
+      summary: Tendencias por género o global (heurística)
+      parameters:
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: week
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Tendencias calculadas por incremento de reproducciones y likes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendList'
+
+  /stats/export:
+    get:
+      summary: Exportar métricas (CSV o JSON)
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [plays, sales, users]
+            default: plays
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
+      responses:
+        "200":
+          description: Archivo con métricas
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /recommendations/user/{userId}:
+    get:
+      summary: Recomendaciones "Para ti" (heurísticas)
+      description: >
+        Recomendaciones simples basadas en historial de likes/plays:
+        - Prioriza items del/los géneros con más likes del usuario.
+        - Caída a top por popularidad si no hay historial.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Lista de recomendaciones heurísticas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleRecommendation'
+
+  /recommendations/similar:
+    get:
+      summary: Recomendaciones similares a una entidad
+      description: Retorna ítems del mismo género/tags y top populares; implementación sin ML.
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [artist, album, track]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Ítems similares heurísticos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleRecommendation'
+
+  /recommendations/refresh:
+    post:
+      summary: Trigger manual para recalcular recomendaciones (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                mode:
+                  type: string
+                  enum: [user, global]
+      responses:
+        "202":
+          description: Recalculo iniciado (job en background)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ack'
+
+components:
+  schemas:
+    Ack:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+          example: true
+        jobId:
+          type: string
+          example: "job-1234"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Event:
+      type: object
+      required: [eventType, timestamp]
+      properties:
+        eventType:
+          type: string
+          enum: [track.played, track.liked, artist.followed, order.paid, page.view]
+        timestamp:
+          type: string
+          format: date-time
+        userId:
+          type: string
+          nullable: true
+          description: Id del usuario si autenticado
+        anonymous:
+          type: boolean
+          description: True si el evento es anónimo
+        entityType:
+          type: string
+          enum: [track, album, artist, merch, page]
+        entityId:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          description: Datos libres (duration, device, ip, price, genre, tags)
+
+    ArtistKPI:
+      type: object
+      properties:
+        artistId:
+          type: string
+        period:
+          type: string
+        plays:
+          type: integer
+        uniqueListeners:
+          type: integer
+        likes:
+          type: integer
+        follows:
+          type: integer
+        purchases:
+          type: integer
+        revenue:
+          type: number
+          format: float
+
+    RankingItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [track, album, artist]
+        title:
+          type: string
+        artistName:
+          type: string
+        metricValue:
+          type: number
+
+    TrendList:
+      type: object
+      properties:
+        period:
+          type: string
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              genre:
+                type: string
+              score:
+                type: number
+              topItems:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RankingItem'
+
+    SimpleRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [track, album, artist]
+        reason:
+          type: string
+          example: "same_genre" 
+        score:
+          type: number
+          example: 0.78
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+x-notes:
+  - "Recomendaciones: heurísticas simples — priorizar género(s) con más likes, luego top por reproducciones."
+  - "Ingesta: puede escribirse a base de datos o a cola (Rabbit/Kafka). Para alta velocidad usar cola y consumer que agregue métricas."
+  - "KPIs: pre-agregar mediante job diario para acelerar consultas; endpoints pueden leer agregaciones."
