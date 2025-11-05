@@ -55,6 +55,8 @@ const DiscoverPage = () => {
         loadMerch();
     }, []);
 
+    //Tarea 15.2 Legada Integración API Discover en frontend
+
     useEffect(() => {
         const filterParam = query.get("filter") || "all";
         setSelectedFilter(filterParam);
