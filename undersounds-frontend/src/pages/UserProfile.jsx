@@ -9,6 +9,7 @@ import UploadArtistForm from '../components/Upload/UploadArtist';
 
 import '../styles/userprofile.css';
 
+// Tarea GA04-10-H8.2-UI-admin-para-asignar-roles legada
 const UserProfile = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
