@@ -42,6 +42,7 @@ class AlbumController {
       res.status(500).json({ error: error.message });
     }
   }
+  //Tarea GA04-11-H9.1-CRUD-de-carrito legada
 
   async getAlbumById(req, res) {
     try {
