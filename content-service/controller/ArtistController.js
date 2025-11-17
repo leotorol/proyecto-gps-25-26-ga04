@@ -26,6 +26,7 @@ class ArtistController {
     }
   }
 // Tarea "GA04-2 H1.1" legada
+// Tarea "GA04-9 H8.1" legada
   async createArtist(req, res) {
     try {
       const artistData = req.body;
