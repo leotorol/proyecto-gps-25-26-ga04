@@ -1,0 +1,14 @@
+{
+  "name": "undersounds-stats-scripts",
+  "version": "1.0.0",
+  "main": "import-db.js",
+  "scripts": {
+    "mongoimport": "node import-db.js",
+    "mongoexport": "node export-db.js",
+    "start": "python server.py"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "mongodb": "^5.7.0"
+  }
+}

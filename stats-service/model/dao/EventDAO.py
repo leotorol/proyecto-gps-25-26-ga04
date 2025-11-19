@@ -1,0 +1,57 @@
+from typing import Dict, Any, List, Optional
+from bson import ObjectId
+from config.db import get_db
+import datetime
+
+class EventDAO:
+    COLLECTION = "events"
+
+    @staticmethod
+    async def insert_event(doc: Dict[str, Any]) -> str:
+        db = get_db()
+        res = await db[EventDAO.COLLECTION].insert_one(doc)
+        return str(res.inserted_id)
+
+    @staticmethod
+    async def aggregate_by_entity(entity_type: str, since: Optional[datetime.datetime] = None, limit: int = 10):
+        db = get_db()
+        match = {"entityType": entity_type}
+        if since:
+            match["timestamp"] = {"$gte": since}
+        pipeline = [
+            {"$match": match},
+            {"$group": {"_id": "$entityId", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": limit}
+        ]
+        return await db[EventDAO.COLLECTION].aggregate(pipeline).to_list(length=limit)
+
+    @staticmethod
+    async def aggregate_for_artist(artist_id: str, start: Optional[datetime.datetime]=None, end: Optional[datetime.datetime]=None):
+        db = get_db()
+        match = {
+            "$or": [
+                {"entityId": artist_id},
+                {"metadata.artistId": artist_id},
+                {"metadata.artist": artist_id}
+            ]
+        }
+        if start or end:
+            match["timestamp"] = {}
+            if start:
+                match["timestamp"]["$gte"] = start
+            if end:
+                match["timestamp"]["$lte"] = end
+        pipeline = [
+            {"$match": match},
+            {"$group": {
+                "_id": None,
+                "plays": {"$sum": {"$cond": [{"$eq": ["$eventType", "track.played"]}, 1, 0]}},
+                "likes": {"$sum": {"$cond": [{"$eq": ["$eventType", "track.liked"]}, 1, 0]}},
+                "follows": {"$sum": {"$cond": [{"$eq": ["$eventType", "artist.followed"]}, 1, 0]}},
+                "purchases": {"$sum": {"$cond": [{"$eq": ["$eventType", "order.paid"]}, 1, 0]}},
+                "revenue": {"$sum": {"$cond":[{"$eq":["$eventType","order.paid"]},"$metadata.price",0]}}
+            }}
+        ]
+        rows = await db[EventDAO.COLLECTION].aggregate(pipeline).to_list(length=1)
+        return rows[0] if rows else {}
