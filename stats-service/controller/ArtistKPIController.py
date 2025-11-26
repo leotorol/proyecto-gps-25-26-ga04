@@ -23,7 +23,7 @@ _SMTP_PORT = int(os.getenv("SMTP_PORT"))
 _SMTP_USER = os.getenv("SMTP_USER")
 _SMTP_PASS = os.getenv("SMTP_PASS")
 _FROM_EMAIL = os.getenv("FROM_EMAIL")
-
+# GA04-32-H14.1-Montar-servidor-SMPT-para-enviar-alertas Tarea legada
 def _send_email_sync(to_email: str, subject: str, plain_text: str, html: str = None):
     msg = EmailMessage()
     msg["From"] = _FROM_EMAIL
