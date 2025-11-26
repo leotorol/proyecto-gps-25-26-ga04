@@ -7,15 +7,17 @@ import albumIMG from '../assets/images/albumPortada.jpg';
 import { fetchArtistById } from '../services/artistService';
 import { merchService } from '../services/merchandisingService'; 
 import { formatDate } from '../utils/formatters';
+import { statsService } from '../services/statsService';
+import { toggleFollowArtist } from '../services/authService'; 
 
 const ArtistProfile = () => {
   const { id } = useParams();
   const numericId = parseInt(id);
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
-  const [merch, setMerch] = useState([]); // Para almacenar el merchandising
+  // FIX: Extraemos setUser para actualizar el contexto globalmente
+  const { user, setUser } = useContext(AuthContext);
+  const [merch, setMerch] = useState([]); 
 
-  // Tarea GA04-39-H16.1 Legada
   // Estados para la carga del artista, error y tabs
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +28,7 @@ const ArtistProfile = () => {
   const handleTshirtClick = (tshirt_Id) => {
     navigate(`/tshirt/${tshirt_Id}`);
   };
-//Tarea GA04-17 H5.2.1 Legada 
-// Tarea GA04-17 H5.2.1 legada parte 2
+
   useEffect(() => {
     // Cargar los datos del artista
     fetchArtistById(numericId)
@@ -40,7 +41,7 @@ const ArtistProfile = () => {
         setError(err);
         setLoading(false);
       });
-  }, [numericId]); // Dependencia en el ID del artista
+  }, [numericId]); 
 
   // Efecto para cargar el merch
   useEffect(() => {
@@ -53,7 +54,16 @@ const ArtistProfile = () => {
       }
     };
     loadMerch();
-  }, []); // Este efecto solo se ejecutará una vez al montar el componente
+  }, [id]); 
+
+  // FIX: Inicializar estado usando el objeto user del contexto
+  useEffect(() => {
+    if (user && artist) {
+      const artistIdStr = String(artist.id || artist._id);
+      const isFav = user.following?.includes(artistIdStr);
+      setIsFollowing(!!isFav);
+    }
+  }, [user, artist]);
 
   if (loading) {
     return <Typography variant="h5">Cargando...</Typography>;
@@ -66,21 +76,64 @@ const ArtistProfile = () => {
     setValue(newValue);
   };
 
-  // Función de accesibilidad para los tabs
   const a11yProps = (index) => ({
     id: `simple-tab-${index}`,
     'aria-controls': `simple-tabpanel-${index}`,
   });
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!user) {
       navigate('/register');
       return;
     }
-    setIsFollowing(!isFollowing);
+
+    // UI Optimista local
+    const prevStatus = isFollowing;
+    setIsFollowing(!prevStatus);
+
+    const artistIdStr = String(artist.id || artist._id);
+
+    try {
+      // 1. Persistir en BD (User Service)
+      await toggleFollowArtist(artistIdStr);
+      
+      // 2. FIX: Actualizar contexto globalmente para que sea instantáneo y persistente en la sesión
+      if (setUser) {
+        setUser(prevUser => {
+          const currentFollowing = prevUser.following || [];
+          let newFollowing;
+          
+          if (!prevStatus) {
+            // Estamos siguiendo: añadir si no existe
+            newFollowing = currentFollowing.includes(artistIdStr) 
+              ? currentFollowing 
+              : [...currentFollowing, artistIdStr];
+          } else {
+            // Estamos dejando de seguir: filtrar
+            newFollowing = currentFollowing.filter(id => id !== artistIdStr);
+          }
+
+          return { ...prevUser, following: newFollowing };
+        });
+      }
+
+      // 3. Enviar evento de estadísticas (Stats Service) - SOLO SI ES FOLLOW
+      if (!prevStatus) {
+        await statsService.sendEvent('artist.followed', {
+          entityType: 'artist',
+          entityId: artistIdStr,
+          userId: user.id || user._id,
+          metadata: { artistName: artist.name }
+        });
+      }
+
+    } catch (error) {
+      console.error("Error al seguir artista", error);
+      setIsFollowing(prevStatus); // Revertir UI local si falla
+    }
   };
 
-  // Renderizado de álbumes con scroll vertical (permitiendo ver más de 4 elementos)
+  // Renderizado de álbumes
   const renderAlbums = (albumsArray) => {
     return (
       <Grid 
@@ -101,7 +154,15 @@ const ArtistProfile = () => {
             xs={6} sm={2} md={3} lg={3}
             sx={{ display: 'flex', flexDirection: 'column', position: 'relative' }}
             className="grid-item"
-            onClick={() => navigate(`/album/${album.id}`)}
+            // FIX: Pasar el objeto album en el state
+            onClick={() => navigate(`/album/${album.id}`, { 
+              state: { 
+                album: { 
+                  ...album, 
+                  artist: artist.name
+                } 
+              } 
+            })}
             style={{ cursor: 'pointer' }}
           >
             <div className="image-container">
@@ -137,7 +198,7 @@ const ArtistProfile = () => {
     );
   };
 
-  // Renderizado de merchandising con scroll vertical
+  // ...existing code... (renderMerchandise y renderConcerts se mantienen igual)
   const renderMerchandise = (merchandise) => {
     return (
       <Grid 
@@ -188,7 +249,6 @@ const ArtistProfile = () => {
     );
   };
 
-  // Renderizado de conciertos con scroll vertical y formateo de fecha
   const renderConcerts = (concerts) => {
     return (
       <Grid 

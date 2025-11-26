@@ -5,16 +5,17 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
+const { withRetry } = require('../utils/httpRetry');
 
 const CONTENT_SERVICE_URL = process.env.CONTENT_SERVICE_URL || 'http://localhost:5001/api';
 const SERVICE_API_KEY = process.env.SERVICE_API_KEY || '';
 
-// nodemailer: mantengo las credenciales en el archivo según tu petición
+// nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'pruebaspi060@gmail.com',
-    pass: 'haqv baox evro yxcj'
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   }
 });
 
@@ -31,7 +32,7 @@ function generateOtp() {
 // Función para enviar el correo real con el OTP
 async function sendOtpEmail(email, otp) {
   const mailOptions = {
-    from: '"Soporte" pruebaspi060@gmail.com',
+    from: process.env.FROM_EMAIL,
     to: email,
     subject: 'Código de recuperación de contraseña',
     text: `Tu código OTP es: ${otp}`,
@@ -43,7 +44,7 @@ async function sendOtpEmail(email, otp) {
 
 // Helpers para comunicación con content-service
 async function createArtistRemote(artistPayload) {
-  try {
+  return withRetry(async () => {
     const resp = await axios.post(
       `${CONTENT_SERVICE_URL}/artists`,
       artistPayload,
@@ -55,25 +56,24 @@ async function createArtistRemote(artistPayload) {
         timeout: 10000
       }
     );
-    // content-service puede devolver { artista: {...} } o directamente el objeto
     return resp.data?.artista || resp.data?.artist || resp.data;
-  } catch (err) {
-    // Propagar para que el llamador decida la política
-    throw err;
-  }
+  }, 3, 1000); // 3 intentos, 1s base delay
 }
 
 async function fetchArtistRemoteById(artistId) {
   try {
-    const resp = await axios.get(`${CONTENT_SERVICE_URL}/artists/${artistId}`, {
-      headers: {
-        ...(SERVICE_API_KEY && { 'x-service-api-key': SERVICE_API_KEY })
-      },
-      timeout: 8000
-    });
-    return resp.data?.artista || resp.data?.artist || resp.data;
+    return await withRetry(async () => {
+      const resp = await axios.get(`${CONTENT_SERVICE_URL}/artists/${artistId}`, {
+        headers: {
+          ...(SERVICE_API_KEY && { 'x-service-api-key': SERVICE_API_KEY })
+        },
+        timeout: 8000
+      });
+      return resp.data?.artista || resp.data?.artist || resp.data;
+    }, 3, 1000);
   } catch (err) {
-    // En caso de error, retornar null (no bloquear autenticación)
+    // En caso de error tras retries, retornar null (no bloquear autenticación)
+    console.warn('fetchArtistRemoteById failed after retries:', err.message);
     return null;
   }
 }
@@ -398,6 +398,56 @@ class AccountController {
         console.error('Error creando artista remoto:', err.message || err);
         return res.status(500).json({ error: 'Error creando artista remoto' });
       }
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+    async toggleFollow(req, res) {
+    try {
+      const userId = req.user.id; // Viene del middleware de auth
+      const { artistId } = req.body;
+      
+      const account = await AccountDao.findById(userId);
+      const isFollowing = account.following && account.following.includes(String(artistId));
+      
+      let updatedAccount;
+      if (isFollowing) {
+        updatedAccount = await AccountDao.unfollowArtist(userId, artistId);
+      } else {
+        updatedAccount = await AccountDao.followArtist(userId, artistId);
+      }
+      
+      res.json({ 
+        success: true, 
+        following: !isFollowing, 
+        list: updatedAccount.following 
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async toggleLike(req, res) {
+    try {
+      const userId = req.user.id;
+      const { trackId } = req.body;
+      
+      const account = await AccountDao.findById(userId);
+      const isLiked = account.likedTracks && account.likedTracks.includes(String(trackId));
+      
+      let updatedAccount;
+      if (isLiked) {
+        updatedAccount = await AccountDao.unlikeTrack(userId, trackId);
+      } else {
+        updatedAccount = await AccountDao.likeTrack(userId, trackId);
+      }
+      
+      res.json({ 
+        success: true, 
+        liked: !isLiked, 
+        list: updatedAccount.likedTracks 
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

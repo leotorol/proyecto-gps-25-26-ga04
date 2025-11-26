@@ -12,6 +12,16 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import Alert from '@mui/material/Alert';
+// IMPORTACIONES NUEVAS
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Link from '@mui/material/Link';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+// -------------------
 import { styled } from '@mui/material/styles';
 import AppTheme from '../themes/AuthTheme/AuthTheme.jsx';
 
@@ -67,6 +77,10 @@ const Register = (props) => {
     ...(registerType === 'label' && { labelName: '', website: '' }),
   });
   const [error, setError] = useState('');
+  
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [openPolicy, setOpenPolicy] = useState(false);
+  
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -77,6 +91,12 @@ const Register = (props) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Validación de términos
+    if (!acceptedTerms) {
+      setError('Debes aceptar la política de privacidad y retención de datos para continuar.');
+      return;
+    }
 
     // Validación del correo electrónico con regex
     const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
@@ -117,6 +137,7 @@ const Register = (props) => {
               gap: 2,
             }}
           >
+            {/* ...existing code... (Inputs de username, email, password, etc.) */}
             <FormControl>
               <FormLabel htmlFor="username">Nombre de Usuario</FormLabel>
               <TextField
@@ -225,11 +246,68 @@ const Register = (props) => {
                 </FormControl>
               </>
             )}
+
+            {/* NUEVO: Checkbox de Políticas */}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  value="allowExtraEmails"
+                  color="primary"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                />
+              }
+              label={
+                <Typography variant="body2" color="text.secondary">
+                  Acepto la{' '}
+                  <Link
+                    component="button"
+                    type="button"
+                    variant="body2"
+                    onClick={() => setOpenPolicy(true)}
+                    sx={{ verticalAlign: 'baseline' }}
+                  >
+                    política de privacidad y retención de datos
+                  </Link>
+                  .
+                </Typography>
+              }
+            />
+
             <Button type="submit" fullWidth variant="contained">
               Registrarse
             </Button>
           </Box>
         </Card>
+
+        {/* NUEVO: Modal de Política de Privacidad */}
+        <Dialog
+          open={openPolicy}
+          onClose={() => setOpenPolicy(false)}
+          aria-labelledby="alert-dialog-title"
+          aria-describedby="alert-dialog-description"
+        >
+          <DialogTitle id="alert-dialog-title">
+            {"Política de Privacidad y Retención de Datos"}
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-description" sx={{ mb: 2 }}>
+              <strong>1. Recopilación de Datos:</strong> Recopilamos su nombre de usuario, correo electrónico y datos de perfil para gestionar su cuenta y mejorar su experiencia en Undersounds.
+            </DialogContentText>
+            <DialogContentText id="alert-dialog-description" sx={{ mb: 2 }}>
+              <strong>2. Retención de Datos:</strong> Sus datos personales se conservarán mientras su cuenta permanezca activa. Si decide eliminar su cuenta, sus datos personales serán anonimizados o eliminados permanentemente de nuestros servidores en un plazo máximo de 30 días, salvo obligación legal de conservarlos.
+            </DialogContentText>
+            <DialogContentText id="alert-dialog-description">
+              <strong>3. Derechos del Usuario:</strong> Usted tiene derecho a acceder, rectificar o solicitar la eliminación de sus datos en cualquier momento contactando con nuestro soporte.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenPolicy(false)} autoFocus>
+              Entendido
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </SignUpContainer>
     </AppTheme>
   );

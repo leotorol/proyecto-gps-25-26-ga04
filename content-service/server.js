@@ -15,17 +15,14 @@ const fs = require('fs');
 const { exec, spawn } = require('child_process');
 const readline = require('readline');
 const Stripe = require('stripe');
-
-// Tarea GA04-65 H9.2.1 Inicio de checkout con Stripe cliente Legada
-//Tarea GA04-12-H9.2-Inicio-de-checkout-con-Stripe-cliente- legada parte 2
+const { generalLimiter, checkoutLimiter } = require('./middleware/rateLimit');
+const compression = require('compression'); 
 
 mongoose.set('strictQuery', false);
-// Tarea GA04-49-H23.1.2 legada
+
 const app = express();
 
-// Tarea GA04-14 H9.3 Webhook Stripe creación de pedido legada
-// Tarea GA04-14-H9.3-Webhook-Stripe-creación-de-pedido parte 2 legada
-
+app.use(compression());
 // CORS: orígenes configurables por env (comma-separated). Fallback a http://localhost:3000
 const rawOrigins = process.env.CORS_ORIGINS || 'http://localhost:3000';
 const CORS_ORIGINS = rawOrigins.split(',').map(o => o.trim());
@@ -38,7 +35,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Servir assets (opcional — conserva si quieres servir imágenes desde este servicio)
-app.use('/assets', express.static(path.join(__dirname, '../undersounds-frontend/src/assets')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Conectar a MongoDB para content-service
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGO_URL;
@@ -72,6 +69,8 @@ const swaggerOptions = {
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+app.use(generalLimiter);
 
 // Rutas del content-service
 app.use('/api/albums', albumRoutes);
@@ -198,13 +197,63 @@ process.on('SIGINT', () => {
   });
 });
 
-// Health check (useful)
-app.get('/healthz', (req, res) => {
-  res.json({ status: 'ok', service: 'content-service', port: PORT });
+// Health check completo 
+app.get('/healthz', async (req, res) => {
+  const health = {
+    status: 'ok',
+    service: 'content-service',
+    timestamp: new Date().toISOString(),
+    checks: {}
+  };
+
+  // 1. Check MongoDB
+  try {
+    const dbState = mongoose.connection.readyState;
+    if (dbState === 1) {
+      await mongoose.connection.db.admin().ping();
+      health.checks.mongodb = { status: 'ok' };
+    } else {
+      health.checks.mongodb = { status: 'error', detail: `readyState=${dbState}` };
+      health.status = 'degraded';
+    }
+  } catch (err) {
+    health.checks.mongodb = { status: 'error', detail: err.message };
+    health.status = 'degraded';
+  }
+
+  // 2. Check memoria
+  try {
+    const memUsage = process.memoryUsage();
+    const heapMB = Math.round(memUsage.heapUsed / (1024 * 1024));
+    const rssMB = Math.round(memUsage.rss / (1024 * 1024));
+    health.checks.memory = {
+      status: heapMB < 500 ? 'ok' : 'warning',
+      heap_mb: heapMB,
+      rss_mb: rssMB
+    };
+    if (heapMB >= 500) health.status = 'degraded';
+  } catch (err) {
+    health.checks.memory = { status: 'unknown', detail: err.message };
+  }
+
+  // 3. Check Stripe configurado
+  health.checks.stripe = {
+    status: stripeKey ? 'ok' : 'warning',
+    configured: !!stripeKey
+  };
+
+  // 4. Check uptime
+  health.checks.uptime = {
+    status: 'ok',
+    seconds: Math.floor(process.uptime())
+  };
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Create checkout session (Stripe)
-app.post('/create-checkout-session', async (req, res) => {
+app.post('/create-checkout-session', checkoutLimiter, async (req, res) => {
   const { items } = req.body;
 
   if (!Array.isArray(items) || items.length === 0) {

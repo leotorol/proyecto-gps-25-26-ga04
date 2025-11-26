@@ -6,11 +6,10 @@ import Button from '@mui/material/Button';
 import UploadAlbumForm from '../components/Upload/Upload';
 import UploadMerchForm from '../components/Upload/UploadMerch';
 import UploadArtistForm from '../components/Upload/UploadArtist';
-
+import UserRecommendations from '../components/Stats/UserRecommendations';
+import { statsService } from '../services/statsService';
 import '../styles/userprofile.css';
 
-// Tarea GA04-10-H8.2-UI-admin-para-asignar-roles legada
-//tarea GA04-6-H6.2-Editar-perfil-de-usuario legada
 const UserProfile = () => {
   const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -110,14 +109,61 @@ const UserProfile = () => {
     }
   };
 
+  // Exportar métricas (solo para artistas/bandas)
+  const handleExportMetrics = async () => {
+    if (!user) return;
+    // Sólo permitir a artistas/bandas
+    if (user.role !== 'band' && user.role !== 'artist') {
+      alert('Solo artistas pueden exportar métricas.');
+      return;
+    }
+
+    const format = (prompt('Formato de export (csv/json)', 'csv') || 'csv').toLowerCase();
+    const startDate = (prompt('Fecha inicio (YYYY-MM-DD) o dejar vacío', '') || '').trim() || null;
+    const endDate = (prompt('Fecha fin (YYYY-MM-DD) o dejar vacío', '') || '').trim() || null;
+
+    try {
+      const res = await statsService.exportMetrics('plays', format, startDate, endDate);
+      if (format === 'csv') {
+        // res puede ser Blob (axios responseType blob) o string
+        const blob = res instanceof Blob ? res : new Blob([res], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const uid = user.id || user._id || 'user';
+        a.download = `metrics-${uid}-${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        // JSON: abrir en nueva pestaña o descargar
+        const data = res;
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const uid = user.id || user._id || 'user';
+        a.download = `metrics-${uid}-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error('Error exporting metrics:', err);
+      alert('Error al exportar métricas. Revisa la consola para más detalles.');
+    }
+  };
+
   if (!user) return null;
 
   return (
     <div className="user-profile">
       <div className="profile-banner">
-        <img 
-          src={user.bannerImage || '/assets/default-banner.jpg'} 
-          alt="Profile Banner" 
+        <img
+          src={user.bannerImage || '/assets/default-banner.jpg'}
+          alt="Profile Banner"
         />
         <button onClick={handleChangeBanner}>Cambiar Banner</button>
       </div>
@@ -229,6 +275,14 @@ const UserProfile = () => {
             >
               Subir Álbum
             </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={handleExportMetrics}
+              sx={{ ml: 2 }}
+            >
+              Exportar métricas
+            </Button>
           </div>
         )}
         {user.role === 'label' && (
@@ -260,25 +314,25 @@ const UserProfile = () => {
       </div>
 
       {openAlbumModal && (
-        <UploadAlbumForm 
-          open={openAlbumModal} 
-          onClose={() => setOpenAlbumModal(false)} 
+        <UploadAlbumForm
+          open={openAlbumModal}
+          onClose={() => setOpenAlbumModal(false)}
         />
       )}
       {openMerchModal && (
-        <UploadMerchForm 
-          open={openMerchModal} 
-          onClose={() => setOpenMerchModal(false)} 
+        <UploadMerchForm
+          open={openMerchModal}
+          onClose={() => setOpenMerchModal(false)}
         />
       )}
       {openRegisterArtistModal && (
-        <UploadArtistForm 
-          open={openRegisterArtistModal} 
-          onClose={() => setOpenRegisterArtistModal(false)} 
+        <UploadArtistForm
+          open={openRegisterArtistModal}
+          onClose={() => setOpenRegisterArtistModal(false)}
         />
       )}
 
-
+      <UserRecommendations />
     </div>
   );
 };

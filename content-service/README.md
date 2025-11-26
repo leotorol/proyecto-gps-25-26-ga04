@@ -1,5 +1,3 @@
-Collecting workspace information# UnderSounds Backend
-
 El backend de UnderSounds proporciona una API completa para gestionar la plataforma de música, ofreciendo servicios para autenticación, gestión de contenido musical, procesamiento de pagos y más.
 
 ## Funcionalidades principales

@@ -6,7 +6,6 @@ import { fetchAlbums, fetchArtists } from '../services/jamendoService';
 import { AlbumContext } from "../context/AlbumContext";
 import { merchService } from '../services/merchandisingService'; // Importa el servicio de merchandising
 
-//Tarea GA04-34 H15.1 legada
 const DiscoverPage = () => {
     const location = useLocation();
     const query = new URLSearchParams(location.search);
@@ -54,8 +53,6 @@ const DiscoverPage = () => {
         };
         loadMerch();
     }, []);
-
-    //Tarea 15.2 Legada Integración API Discover en frontend
 
     useEffect(() => {
         const filterParam = query.get("filter") || "all";

@@ -30,8 +30,6 @@ class AudioConverterService {
         // MP3 con alta calidad
         command = command.audioCodec('libmp3lame').audioQuality(0);
       }
-
-      //Tarea GA04-18-H3.2 Legada
       
       // Ejecutar la conversión
       command

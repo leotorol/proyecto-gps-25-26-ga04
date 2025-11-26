@@ -10,16 +10,23 @@ const axios = require('axios');
 const audioConverter = require('../services/AudioConverterService');
 const mongoose = require('mongoose');
 
-// Tarea GA04-15-H3.1 legada
-
 // Usar rutas relativas para los archivos de música
-const MUSIC_FILES_PATH = path.join(process.cwd(), '..', 'undersounds-frontend', 'src', 'assets', 'music');
+const MUSIC_FILES_PATH = path.join(process.cwd(), 'assets', 'music');
 
 class AlbumController {
   async getAlbums(req, res) {
     try {
+      // Construir filtro basado en query params
+      const filter = {};
+      
+      // Soporte para filtrado por género (case-insensitive)
+      if (req.query.genre) {
+        filter.genre = { $regex: req.query.genre, $options: 'i' };
+      }
+      const limit = req.query.limit ? parseInt(req.query.limit) : 0;
+
       // Modificar para hacer populate del campo artist, seleccionando solo campos necesarios
-      const albums = await AlbumDao.getAlbums();
+      const albums = await AlbumDao.getAlbums(filter, { limit });      
       // Populate los objetos de artista
       await Promise.all(albums.map(async album => {
         if (album.artist && typeof album.artist === 'object' && album.artist._id) {
@@ -42,7 +49,6 @@ class AlbumController {
       res.status(500).json({ error: error.message });
     }
   }
-  //Tarea GA04-11-H9.1-CRUD-de-carrito legada
 
   async getAlbumById(req, res) {
     try {
@@ -74,9 +80,7 @@ class AlbumController {
       res.status(500).json({ error: error.message });
     }
   }
-
-  //Tarea GA04-55 H2.1.1 legada
-  //Tarea GA04-55 H2.1.2 legada  
+  
   async createAlbum(req, res) {
     try {
       // Los datos del formulario se encuentran en req.body
@@ -172,7 +176,7 @@ class AlbumController {
       
       // Procesar archivo de coverImage si existe
       if (req.files && req.files.coverImage && req.files.coverImage.length > 0) {
-        albumData.coverImage = "http://localhost:5000/assets/images/" + req.files.coverImage[0].filename;
+        albumData.coverImage = "http://localhost:5001/assets/images/" + req.files.coverImage[0].filename;
       }
   
       // Procesar los archivos de las pistas (tracks)
@@ -192,7 +196,7 @@ class AlbumController {
           id: index + 1,
           title: (trackTitles[index] || file.originalname).trim(),
           duration: (trackDurations[index] || '0:00').trim(),
-          url: "http://localhost:5000/assets/music/" + file.filename,
+          url: "http://localhost:5001/assets/music/" + file.filename,
           autor: (trackAutors[index] || albumData.artistName || 'Unknown').trim(),
           n_reproducciones: 0
         }));

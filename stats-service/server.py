@@ -6,10 +6,20 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from pathlib import Path
 from dotenv import load_dotenv
 import os, json, subprocess, sys, inspect, asyncio, threading, yaml, uvicorn, signal 
+from datetime import datetime
+import psutil
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(str(BASE_DIR / ".env"))
 
 # routers
 from routes.EventRoutes import router as event_router
 from routes.ArtistKPIRoutes import router as artist_kpi_router
+
+# Rate limiting
+from middleware.rate_limit import limiter, get_limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # DB module
 import config.db as db_module
@@ -17,8 +27,7 @@ import config.db as db_module
 CONNECT_FN = getattr(db_module, "connect_to_mongo", None)
 CLOSE_FN = getattr(db_module, "close_mongo", None)
 
-BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(str(BASE_DIR / ".env"))
+
 CONFIG_DIR = BASE_DIR / "config"
 SHARED_META = CONFIG_DIR / "dbmeta.json"
 LOCAL_META = CONFIG_DIR / "dbmeta_local.json"
@@ -26,6 +35,10 @@ IMPORT_SCRIPT = BASE_DIR / "import-db.js"
 EXPORT_SCRIPT = BASE_DIR / "export-db.js"
 
 app = FastAPI(title="UnderSounds — Stats Service", docs_url=None, redoc_url=None, openapi_url=None)
+
+# Attach limiter to app state and add exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Cargar especificación OpenAPI desde docs/Estadisticas.yaml y usarla como esquema OpenAPI
 OPENAPI_YAML = BASE_DIR / "docs" / "Estadisticas.yaml"
@@ -82,39 +95,64 @@ def update_version_file(path: Path, new_version: int, collections=None):
     except Exception as e:
         print("Error actualizando meta:", e)
 
-def run_node_script(script_path: Path) -> subprocess.CompletedProcess:
+def run_node_script(script_path: Path, interactive: bool = False) -> subprocess.CompletedProcess:
     if not script_path.exists():
         raise FileNotFoundError(f"{script_path} not found")
-    return subprocess.run(["node", str(script_path)], cwd=str(BASE_DIR), capture_output=True, text=True)
+    
+    if interactive:
+        # Conectar directamente a la terminal para permitir interacción (preguntas/respuestas)
+        return subprocess.run(
+            ["node", str(script_path)], 
+            cwd=str(BASE_DIR), 
+            stdin=sys.stdin, 
+            stdout=sys.stdout, 
+            stderr=sys.stderr
+        )
+    else:
+        # Capturar salida para procesos en segundo plano (logs)
+        return subprocess.run(
+            ["node", str(script_path)], 
+            cwd=str(BASE_DIR), 
+            capture_output=True, 
+            text=True
+        )
 
 def prompt_and_export():
     try:
+        # Usamos input directo de Python
         answer = input("\n¿Desea respaldar los datos con mongoexport? (S/N): ").strip().upper()
     except EOFError:
         answer = "N"
+        
     if answer == "S":
-        print("Ejecutando export-db.js ...")
+        print("Iniciando export-db.js (Interactivo)...")
         try:
-            proc = run_node_script(EXPORT_SCRIPT)
+            # Llamada interactiva: el control pasa al script de Node
+            proc = run_node_script(EXPORT_SCRIPT, interactive=True)
+            
             if proc.returncode != 0:
-                print("export-db.js falló:", proc.stderr)
+                print("export-db.js terminó con errores.")
             else:
-                print("Exportación completada:", proc.stdout)
-                # bump version in shared & local meta
+                print("Exportación finalizada correctamente.")
+                
+                # Actualizar metadatos (versión) después del éxito
                 shared_meta = {}
                 try:
                     if SHARED_META.exists():
                         shared_meta = json.loads(SHARED_META.read_text(encoding="utf-8"))
                 except Exception:
                     shared_meta = {}
+                
                 current_collections = shared_meta.get("colecciones", [])
                 new_version = int(shared_meta.get("dbVersion", 0)) + 1
                 update_version_file(SHARED_META, new_version, current_collections)
                 update_version_file(LOCAL_META, new_version, current_collections)
+                
         except Exception as e:
             print("Error ejecutando export script:", e)
     else:
         print("No se realizará el respaldo de datos.")
+    
     print("Saliendo.")
     sys.exit(0)
 
@@ -152,15 +190,88 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    """Graceful shutdown: cerrar recursos limpiamente."""
+    print("Iniciando graceful shutdown...")
+    
+    # 1. Cerrar conexión a BD
     try:
         await _call_maybe_async(CLOSE_FN)
         print("DB connection closed")
     except Exception as e:
-        print("Error closing DB:", e)
+        print(f"Error closing DB: {e}")
+    
+    # 2. Limpiar cache
+    try:
+        from controller.ArtistKPIController import _cache, _cache_locks
+        _cache.clear()
+        _cache_locks.clear()
+        print("Cache cleared")
+    except Exception as e:
+        print(f"Error clearing cache: {e}")
+    
+    print("Graceful shutdown completado.")
+
 
 @app.get("/healthz")
 async def healthz():
-    return {"status": "ok", "service": "stats-service"}
+    """
+    Health check completo:
+    - db: estado de conexión a MongoDB
+    - memory: uso de memoria del proceso
+    - circuit_breaker: estado del CB hacia content-service
+    """
+    from controller.ArtistKPIController import content_cb
+    
+    health = {
+        "status": "ok",
+        "service": "stats-service",
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+    
+    # 1. Check MongoDB
+    try:
+        from config.db import get_db
+        db = get_db()
+        if db is not None:
+            # ping rápido
+            await db.command("ping")
+            health["checks"]["mongodb"] = {"status": "ok"}
+        else:
+            health["checks"]["mongodb"] = {"status": "error", "detail": "db is None"}
+            health["status"] = "degraded"
+    except Exception as e:
+        health["checks"]["mongodb"] = {"status": "error", "detail": str(e)}
+        health["status"] = "degraded"
+    
+    # 2. Check memoria
+    try:
+        process = psutil.Process()
+        mem_info = process.memory_info()
+        mem_mb = mem_info.rss / (1024 * 1024)
+        health["checks"]["memory"] = {
+            "status": "ok" if mem_mb < 500 else "warning",
+            "rss_mb": round(mem_mb, 2)
+        }
+        if mem_mb >= 500:
+            health["status"] = "degraded"
+    except Exception as e:
+        health["checks"]["memory"] = {"status": "unknown", "detail": str(e)}
+    
+    # 3. Check circuit breaker
+    try:
+        cb_state = getattr(content_cb, "state", None) or getattr(content_cb, "current_state", None)
+        state_name = cb_state.name if hasattr(cb_state, "name") else str(cb_state)
+        health["checks"]["circuit_breaker"] = {
+            "status": "ok" if state_name.lower() == "closed" else "warning",
+            "state": state_name
+        }
+        if state_name.lower() == "open":
+            health["status"] = "degraded"
+    except Exception as e:
+        health["checks"]["circuit_breaker"] = {"status": "unknown", "detail": str(e)}
+    
+    return health
 
     
 @app.get("/api/openapi.yaml", include_in_schema=False)
@@ -196,11 +307,12 @@ async def root():
     return RedirectResponse("/api/docs")
 
 if __name__ == "__main__":
-    # leer variables con valores por defecto
     port = int(os.getenv("PORT"))
     host = os.getenv("HOST")
     
-        # registrar handler SIGINT para mostrar prompt interactivo
+    # Graceful shutdown timeout (segundos para esperar requests activas)
+    SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
+    
     def _sigint_handler(signum, frame):
         try:
             prompt_and_export()
@@ -210,8 +322,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, _sigint_handler)
 
     try:
-        # ejecutar uvicorn; capturar Ctrl+C aquí y lanzar prompt interactivo una sola vez
-        uvicorn.run("server:app", host=host, port=port, reload=False)
+        # timeout_graceful_shutdown: espera N segundos antes de forzar cierre
+        uvicorn.run(
+            "server:app",
+            host=host,
+            port=port,
+            reload=False,
+            timeout_graceful_shutdown=SHUTDOWN_TIMEOUT
+        )
     except KeyboardInterrupt:
-        # solo se ejecuta en el proceso que lanzó python server.py
         prompt_and_export()

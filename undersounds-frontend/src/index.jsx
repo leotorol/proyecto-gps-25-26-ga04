@@ -4,9 +4,7 @@ import App from './App';
 import ConcertProvider from './context/ConcertContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
     <ConcertProvider>
       <App />
     </ConcertProvider>
-  </React.StrictMode>
 );
