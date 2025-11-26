@@ -1,5 +1,6 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { statsService } from '../services/statsService.js';
 import {
   Box,
   Button,
@@ -15,6 +16,7 @@ import {
   DialogActions,
   TextField,
   Rating,
+  CardActionArea 
 } from '@mui/material';
 import { Star } from '@mui/icons-material';
 import '../styles/album.css';
@@ -22,20 +24,23 @@ import { PlayerContext } from '../context/PlayerContext';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import defaultImage from '../assets/images/botonPlay.jpg';
-import { fetchAlbumById, fetchTracklist } from '../services/jamendoService';
+import { fetchAlbumById, fetchTracklist, fetchAlbums } from '../services/jamendoService';
 import axios from 'axios';
 
 const ProfileImage = 'https://via.placeholder.com/40';
 
-// Tarea GA04-59 H16.2.1 legada
-// Tarea GA04-59 H16.2.2 legada
 const AlbumPage = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { playTrack } = useContext(PlayerContext);
-  const { addToCart } = useContext(CartContext);
-  const { user } = useContext(AuthContext);
+
+  // Contexts — defensivo para evitar crash si no están disponibles
+  const _playerCtx = useContext(PlayerContext) || {};
+  const playTrack = _playerCtx.playTrack || (() => {});
+  const _cartCtx = useContext(CartContext) || {};
+  const addToCart = _cartCtx.addToCart || (() => {});
+  const _authCtx = useContext(AuthContext) || {};
+  const user = _authCtx.user || null;
 
   const [album, setAlbum] = useState(location.state?.album || null);
   const [albumTracks, setAlbumTracks] = useState([]);
@@ -46,6 +51,10 @@ const AlbumPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState("");
+  const [similarAlbums, setSimilarAlbums] = useState([]);
+
+  // Estado para saber cuanto tiempo lleva el usuario reproduciendo una cancion para discriminar eventos
+  const playbackTimerRef = useRef(null);
 
   const getArtistName = (album) => {
     // Si existe el campo artist como cadena o como objeto con propiedad name, se usa de inmediato
@@ -57,7 +66,8 @@ const AlbumPage = () => {
   };
 
   useEffect(() => {
-    if (!album) {
+    // Si no hay álbum o el ID de la URL ha cambiado respecto al estado actual
+    if (!album || String(album.id) !== String(id)) {
       const loadAlbum = async () => {
         try {
           const fetchedAlbum = await fetchAlbumById(id);
@@ -84,6 +94,30 @@ const AlbumPage = () => {
     }
   }, [album]);
 
+  // NUEVO USEEFFECT: Cargar sugerencias "Más como este" USANDO EL BACKEND
+  // Esto es mucho más eficiente que descargar todos los álbumes y filtrar en el cliente
+  useEffect(() => {
+    const loadSimilar = async () => {
+      if (!album || !album.id) return;
+
+      try {
+        // Llamada al endpoint optimizado del backend
+        const similar = await statsService.getSimilarRecommendations(album.genre, 10, album.id);
+        setSimilarAlbums(similar);
+      } catch (error) {
+        console.error("Error cargando álbumes similares:", error);
+      }
+    };
+
+    loadSimilar();
+  }, [album]);
+
+  const handleSimilarClick = (simAlbum) => {
+    navigate(`/album/${simAlbum.id}`, { state: { album: simAlbum } });
+    window.scrollTo(0, 0); // Subir al inicio de la página
+  };
+
+
   if (!album) {
     return <Typography variant="h5">Cargando álbum...</Typography>;
   }
@@ -109,8 +143,12 @@ const AlbumPage = () => {
       navigate("/login");
       return;
     }
-    const trackDetail =
-      tracks.find((t) => t.id === track.id) || tracksData.find((t) => t.id === track.id);
+    // clear any pending timer for previous track
+    if (playbackTimerRef.current) {
+     clearTimeout(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    }
+    const trackDetail = tracks.find((t) => t.id === track.id);
     if (trackDetail) {
       playTrack({
         ...trackDetail,
@@ -118,12 +156,36 @@ const AlbumPage = () => {
         coverImage:
           trackDetail.coverImage || album.coverImage || album.image || '/assets/images/default-cover.jpg',
         tracklist: tracks,
+        albumId: album.id
       });
       setActiveTrackId(track.id);
+      // start 20s timer to count as a play
+      playbackTimerRef.current = setTimeout(() => {
+        statsService.sendEvent('track.played', {
+          entityType: 'track',
+          entityId: trackDetail.id || trackDetail._id || track.id,
+          userId: user?.id || user?._id || null,
+          metadata: {
+            albumId: album?.id || album?._id || album?.albumId || null,
+            artist: album?.artist || album?.artistId || trackDetail.artist || null
+          }
+        }).catch(err => console.warn('statsService.sendEvent error', err));
+        playbackTimerRef.current = null;
+      }, 20000);
     } else {
       console.error("Track not found");
     }
   };
+
+  // cleanup timer on unmount / navigation
+  useEffect(() => {
+    return () => {
+      if (playbackTimerRef.current) {
+        clearTimeout(playbackTimerRef.current);
+        playbackTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleDownload = (track) => {
     const format = window.prompt("Selecciona el formato para descargar (mp3, wav o flac):", "mp3");
@@ -146,7 +208,7 @@ const AlbumPage = () => {
     addToCart({
       id: track.id,
       name: track.title || track.name,
-      price: 0.99,
+      price: track.price,
       image: track.coverImage || album.coverImage || album.image || '/assets/images/default-cover.jpg',
       type: 'song',
       formats: ['mp3', 'wav', 'flac'],
@@ -166,7 +228,7 @@ const AlbumPage = () => {
     };
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/albums/${album.id}/rate`,
+        `http://localhost:5001/api/albums/${album.id}/rate`,
         newRatingObj,
         { withCredentials: true }
       );
@@ -335,7 +397,7 @@ const AlbumPage = () => {
                       onClick={() => handleBuySong(track)}
                       sx={{ ml: 2, flex: "10%" }}
                     >
-                      Comprar 0.99
+                      Comprar {track.price}
                     </Button>
                   </Box>
                 </Box>
@@ -390,6 +452,50 @@ const AlbumPage = () => {
             ))}
           </Box>
         </Box>
+
+        {/* NUEVA SECCIÓN: MÁS COMO ESTE */}
+        {similarAlbums.length > 0 && (
+          <Box sx={{ mt: 6, mb: 4 }}>
+            <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: '#333', borderBottom: '1px solid #ccc', pb: 1 }}>
+              Más como este (Género: {album.genre})
+            </Typography>
+            
+            <Grid container spacing={3}>
+              {similarAlbums.map((simAlbum) => (
+                <Grid item xs={6} sm={3} key={simAlbum.id}>
+                  <Card 
+                    sx={{ 
+                      height: '100%', 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      transition: 'transform 0.2s',
+                      '&:hover': { transform: 'scale(1.03)' }
+                    }}
+                    onClick={() => handleSimilarClick(simAlbum)}
+                  >
+                    <CardActionArea>
+                      <CardMedia
+                        component="img"
+                        image={simAlbum.coverImage || '/assets/images/default-cover.jpg'}
+                        alt={simAlbum.title}
+                        sx={{ aspectRatio: '1/1' }}
+                      />
+                      <CardContent>
+                        <Typography gutterBottom variant="subtitle1" component="div" noWrap>
+                          {simAlbum.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" noWrap>
+                          {simAlbum.artist?.name || simAlbum.artist || 'Artista desconocido'}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
       </Box>
   
       {/* Diálogo para añadir valoración */}

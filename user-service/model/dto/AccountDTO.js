@@ -10,6 +10,8 @@ class AccountDTO {
     this.followers = account.followers;
     this.bio = account.bio;
     this.socialLinks = account.socialLinks;
+    this.following = account.following || [];
+    this.likedTracks = account.likedTracks || [];
     
     if (account.role === 'band') {
       this.bandName = account.bandName;

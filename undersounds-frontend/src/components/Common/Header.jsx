@@ -1,3 +1,4 @@
+// c:\Users\WHO\Desktop\ProyectoASEE\ProyectoASEE\undersounds-frontend\src\components\Common\Header.jsx
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -26,7 +27,7 @@ import SignUpDialog from '../Auth/SignUpDx';
 import { AuthContext } from '../../context/AuthContext';
 import { CartContext } from '../../context/CartContext';
 import { fetchArtists as fetchArtistsService } from '../../services/artistService';
-import { fetchAlbums } from '../../services/jamendoService';
+import { fetchAlbums, fetchAlbumById } from '../../services/jamendoService';
 
 const Header = () => {
   const [query, setQuery] = useState('');
@@ -34,7 +35,7 @@ const Header = () => {
   const [filter, setFilter] = useState('all');
   const [results, setResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null); // Para el menú del avatar
+  const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const containerRef = useRef(null);
@@ -50,7 +51,7 @@ const Header = () => {
       if (filter === 'all' || filter === 'artists') {
         const artists = await fetchArtistsService();
         const artistMatches = artists.filter(artist =>
-          artist.name.toLowerCase().includes(lowerQuery)
+          (artist.name || '').toLowerCase().includes(lowerQuery)
         );
         filteredResults = filteredResults.concat(
           artistMatches.map(item => ({ type: 'artist', data: item }))
@@ -60,7 +61,7 @@ const Header = () => {
       if (filter === 'all' || filter === 'albums') {
         const albums = await fetchAlbums();
         const albumMatches = albums.filter(album =>
-          album.title.toLowerCase().includes(lowerQuery)
+          (album.title || '').toLowerCase().includes(lowerQuery)
         );
         filteredResults = filteredResults.concat(
           albumMatches.map(item => ({ type: 'album', data: item }))
@@ -74,7 +75,7 @@ const Header = () => {
         albums.forEach(album => {
           if (Array.isArray(album.tracks)) {
             const matchingTracks = album.tracks.filter(track =>
-              track.title.toLowerCase().includes(lowerQuery)
+              (track.title || '').toLowerCase().includes(lowerQuery)
             ).map(track => ({
               ...track,
               albumId: album.id,
@@ -131,6 +132,29 @@ const Header = () => {
     setShowDropdown(false);
   };
 
+  const onClickAlbumResult = (album) => {
+    // navegar con el objeto album en state para evitar que AlbumPage quede sin datos
+    setShowDropdown(false);
+    navigate(`/album/${album.id}`, { state: { album } });
+  };
+
+  const onClickTrackResult = async (track) => {
+    setShowDropdown(false);
+    if (!track.albumId) {
+      // fallback: navegar a la ruta sin state
+      navigate(`/album/${track.albumId || ''}`);
+      return;
+    }
+    try {
+      // intentamos obtener el álbum completo antes de navegar
+      const album = await fetchAlbumById(track.albumId);
+      navigate(`/album/${track.albumId}`, { state: { album } });
+    } catch (err) {
+      console.error('Error fetching album before navigation:', err);
+      navigate(`/album/${track.albumId}`);
+    }
+  };
+
   const renderResultItem = (result) => {
     if (result.type === 'artist') {
       return (
@@ -147,11 +171,13 @@ const Header = () => {
         </ListItem>
       );
     } else if (result.type === 'album') {
+      // pasar el album en state para que AlbumPage lo reciba y no dependa del context
       return (
         <ListItem
           button
           component={Link}
           to={`/album/${result.data.id}`}
+          state={{ album: result.data }}
           key={`album-${result.data.id}`}
         >
           <ListItemAvatar>
@@ -161,11 +187,11 @@ const Header = () => {
         </ListItem>
       );
     } else if (result.type === 'track') {
+      // para pistas hacemos fetch del álbum antes de navegar (no usar Link aquí)
       return (
         <ListItem
           button
-          component={Link}
-          to={`/album/${result.data.albumId}`}
+          onClick={() => onClickTrackResult(result.data)}
           key={`track-${result.data.id}`}
         >
           <ListItemAvatar>
@@ -274,7 +300,10 @@ const Header = () => {
                   {results.slice(0, 4).map(renderResultItem)}
                   <ListItem
                     button
-                    onClick={() => navigate(`/explore?filter=${filter}&q=${encodeURIComponent(query.trim())}`)}
+                    onClick={() => {
+                      setShowDropdown(false);
+                      navigate(`/explore?filter=${filter}&q=${encodeURIComponent(query.trim())}`);
+                    }}
                   >
                     <ListItemText primary="Mostrar más" />
                   </ListItem>

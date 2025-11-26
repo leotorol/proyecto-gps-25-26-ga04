@@ -85,8 +85,6 @@ function GoogleAuthHandler() {
     return null; // Este componente no renderiza nada
 }
 
-//Tarea GA04-43-H20.2 Legada
-
 const AppContent = () => {
     const location = useLocation();
     const hideNavRoutes = ['/login', '/register', '/explore'];

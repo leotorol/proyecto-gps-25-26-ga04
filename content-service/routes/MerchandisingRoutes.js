@@ -8,7 +8,7 @@ const MerchandisingController = require('../controller/MerchandisingController')
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         if (file.fieldname === 'image') {
-            cb(null, path.join(__dirname, '../../undersounds-frontend/src/assets/images'));
+            cb(null, path.join(__dirname, '../assets/images'));
         }
     },
     filename: function (req, file, cb) {
