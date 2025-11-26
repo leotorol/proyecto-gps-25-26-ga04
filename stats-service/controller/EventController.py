@@ -4,6 +4,8 @@ from datetime import datetime
 import os
 import httpx
 
+# Tarea GA04-50-H23.2-Optimización-de-petición-de-eventos legada
+
 from model.factory.EventFactory import EventFactory
 from model.dao.EventDAO import EventDAO
 from model.dao.ArtistKPIDAO import ArtistKPIDAO
