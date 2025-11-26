@@ -25,17 +25,16 @@ class ArtistController {
       res.status(500).json({ error: error.message });
     }
   }
-// Tarea "GA04-2 H1.1" legada
-// Tarea "GA04-9 H8.1" legada
+
   async createArtist(req, res) {
     try {
       const artistData = req.body;
       if(req.files) {
         if (req.files.profileImage) {
-          artistData.profileImage = "http://localhost:5000/assets/images/" + req.files.profileImage[0].filename;
+          artistData.profileImage = "http://localhost:5001/assets/images/" + req.files.profileImage[0].filename;
         }
         if (req.files.banner) {
-          artistData.banner = "http://localhost:5000/assets/images/" + req.files.banner[0].filename;
+          artistData.banner = "http://localhost:5001/assets/images/" + req.files.banner[0].filename;
         }
       }
       const artistEntity = ArtistaFactory.createArtist(artistData);
@@ -51,7 +50,6 @@ class ArtistController {
     }
   }
 
-  // Tarea "GA04-2 H1.2" legada
   async updateArtist(req, res) {
     try {
       const numericId = Number(req.params.id);

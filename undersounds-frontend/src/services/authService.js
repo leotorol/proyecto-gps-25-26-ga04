@@ -101,4 +101,22 @@ export const resetPassword = async (email, otp, newPassword, otpToken) => {
   return response.data;
 };
 
-export const authService = { login, register, logout, updateUserProfile, refreshToken, oauthLogin, forgotPassword, resetPassword };
+export const toggleFollowArtist = async (artistId) => {
+  try {
+    const response = await axios.post(`${API_URL}/toggle-follow`, { artistId });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const toggleLikeTrack = async (trackId) => {
+  try {
+    const response = await axios.post(`${API_URL}/toggle-like`, { trackId });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const authService = { login, register, logout, updateUserProfile, refreshToken, oauthLogin, forgotPassword, resetPassword, toggleFollowArtist, toggleLikeTrack };

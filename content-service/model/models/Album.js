@@ -20,7 +20,8 @@ const AlbumSchema = new mongoose.Schema({
     duration: { type: String, required: true },
     url: { type: String, required: true },
     autor: { type: String },
-    n_reproducciones: { type: Number }
+    n_reproducciones: { type: Number },
+    price: { type: Number, default: 0.99 } 
   }],
   ratings: { type: [RatingSchema], default: [] },
   vinyl: { type: Boolean, default: false },

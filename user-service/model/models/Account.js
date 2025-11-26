@@ -7,7 +7,7 @@ const AccountSchema = new mongoose.Schema({
   password: { type: String },
   role: { type: String, enum: ['fan', 'band', 'label'], default: 'fan' },
   profileImage: { type: String, default: '' },
-  bannerImage: { type: String, default: 'http://localhost:5000/assets/images/default.jpg' },
+  bannerImage: { type: String, default: 'http://localhost:5001/assets/images/default.jpg' },
   followers: { type: Number, default: 0 },
   bio: { type: String, default: '' },
   socialLinks: {
@@ -15,6 +15,8 @@ const AccountSchema = new mongoose.Schema({
     instagram: { type: String, default: '' },
     twitter: { type: String, default: '' }
   },
+  following: [{ type: String }],    // IDs de artistas seguidos
+  likedTracks: [{ type: String }],  // IDs de canciones con like
   // Campos específicos para ciertos roles
   bandName: { type: String },
   genre: { type: String },

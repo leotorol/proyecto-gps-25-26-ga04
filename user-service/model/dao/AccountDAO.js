@@ -45,6 +45,23 @@ class AccountDao {
     });
   }
 
+  async followArtist(userId, artistId) {
+    // $addToSet evita duplicados automáticamente
+    return await Account.findByIdAndUpdate(userId, { $addToSet: { following: String(artistId) } }, { new: true });
+  }
+
+  async unfollowArtist(userId, artistId) {
+    return await Account.findByIdAndUpdate(userId, { $pull: { following: String(artistId) } }, { new: true });
+  }
+
+  async likeTrack(userId, trackId) {
+    return await Account.findByIdAndUpdate(userId, { $addToSet: { likedTracks: String(trackId) } }, { new: true });
+  }
+
+  async unlikeTrack(userId, trackId) {
+    return await Account.findByIdAndUpdate(userId, { $pull: { likedTracks: String(trackId) } }, { new: true });
+  }
+
   async delete(id) {
     return await Account.findByIdAndDelete(id);
   }

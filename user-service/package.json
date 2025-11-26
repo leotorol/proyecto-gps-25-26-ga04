@@ -29,6 +29,7 @@
     "readline-sync": "^1.4.10",
     "stripe": "^18.0.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.3"
+    "swagger-ui-express": "^4.6.3",
+    "express-rate-limit": "^7.1.5"
   }
 }

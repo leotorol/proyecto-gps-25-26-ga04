@@ -1,0 +1,40 @@
+const axios = require('axios');
+
+/**
+ * HTTP request con retry automático
+ * @param {Function} requestFn - Función que retorna una promesa de axios
+ * @param {number} maxRetries - Número máximo de reintentos (default: 3)
+ * @param {number} baseDelay - Delay base en ms (default: 1000)
+ * @returns {Promise} - Respuesta de axios
+ */
+async function withRetry(requestFn, maxRetries = 3, baseDelay = 1000) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (err) {
+      lastError = err;
+      
+      // Solo retry en errores transitorios
+      const isRetryable = 
+        err.code === 'ECONNREFUSED' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ENOTFOUND' ||
+        (err.response && [502, 503, 504].includes(err.response.status));
+      
+      if (!isRetryable || attempt === maxRetries) {
+        throw err;
+      }
+      
+      // Backoff exponencial: 1s, 2s, 4s...
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.warn(`HTTP retry ${attempt}/${maxRetries} after ${delay}ms:`, err.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+module.exports = { withRetry };

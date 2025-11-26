@@ -10,9 +10,9 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     // Guarda ambas imágenes en la carpeta de assets/images del frontend
     if (file.fieldname === 'profileImage' || file.fieldname === 'banner') {
-      cb(null, path.join(__dirname, '../../undersounds-frontend/src/assets/images'));
+      cb(null, path.join(__dirname, '../assets/images'));
     } else {
-      cb(null, path.join(__dirname, '../../undersounds-frontend/src/assets/images'));
+      cb(null, path.join(__dirname, '../assets/images'));
     }
   },
   filename: function (req, file, cb) {

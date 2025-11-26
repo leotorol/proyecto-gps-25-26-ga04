@@ -11,16 +11,20 @@ class AlbumDAO {
     }
   }
   
-  async getAlbums(filter = {}) {
-    try {
-      // Modificar el populate para incluir ambos IDs (numérico y ObjectId)
-      return await Album.find(filter)
-        .populate('artist', '_id id name bandName profileImage') // Incluye tanto _id como id numérico
-        .sort({ createdAt: -1 });
-    } catch (error) {
-      throw new Error(`Error al obtener álbumes: ${error.message}`);
-    }
+async getAlbums(filter = {}, options = {}) {
+  try {
+    const query = Album.find(filter)
+      .populate('artist', '_id id name bandName profileImage')
+      .sort({ createdAt: -1 });
+
+    const limit = parseInt(options.limit) || 0;
+    if (limit > 0) query.limit(limit);
+
+    return await query;
+  } catch (error) {
+    throw new Error(`Error al obtener álbumes: ${error.message}`);
   }
+}
   
   async getAlbumById(id) {
     try {

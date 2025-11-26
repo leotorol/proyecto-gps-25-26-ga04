@@ -13,12 +13,12 @@ const fs = require('fs');
 const { exec, spawn } = require('child_process');
 const readline = require('readline');
 const session = require('express-session');
+const { generalLimiter } = require('./middleware/rateLimit');
+const { sanitizeBody, sanitizeQuery } = require('./middleware/sanitize');
 
 mongoose.set('strictQuery', false);
 
 const app = express();
-
-// Tarea GA04-47 H21.2 CORS y validación input Legada
 
 // CORS - permitir orígenes configurables
 const CORS_ORIGINS = process.env.CORS_ORIGINS.split(',');
@@ -29,6 +29,10 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Sanitización de inputs silenciosa
+app.use(sanitizeBody);
+app.use(sanitizeQuery);
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'undersounds_secret_key',
@@ -67,6 +71,7 @@ const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Rutas del user-service (auth)
+app.use(generalLimiter);
 app.use('/api/auth', accountRoutes);
 
 // Mantener la funcionalidad de metadata/import si la quieres en cada servicio
@@ -139,6 +144,56 @@ const checkAndImportData = () => {
     startServer();
   }
 };
+
+// Health check completo
+app.get('/healthz', async (req, res) => {
+  const health = {
+    status: 'ok',
+    service: 'user-service',
+    timestamp: new Date().toISOString(),
+    checks: {}
+  };
+
+  // 1. Check MongoDB
+  try {
+    const dbState = mongoose.connection.readyState;
+    // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+    if (dbState === 1) {
+      await mongoose.connection.db.admin().ping();
+      health.checks.mongodb = { status: 'ok' };
+    } else {
+      health.checks.mongodb = { status: 'error', detail: `readyState=${dbState}` };
+      health.status = 'degraded';
+    }
+  } catch (err) {
+    health.checks.mongodb = { status: 'error', detail: err.message };
+    health.status = 'degraded';
+  }
+
+  // 2. Check memoria
+  try {
+    const memUsage = process.memoryUsage();
+    const heapMB = Math.round(memUsage.heapUsed / (1024 * 1024));
+    const rssMB = Math.round(memUsage.rss / (1024 * 1024));
+    health.checks.memory = {
+      status: heapMB < 500 ? 'ok' : 'warning',
+      heap_mb: heapMB,
+      rss_mb: rssMB
+    };
+    if (heapMB >= 500) health.status = 'degraded';
+  } catch (err) {
+    health.checks.memory = { status: 'unknown', detail: err.message };
+  }
+
+  // 3. Check uptime
+  health.checks.uptime = {
+    status: 'ok',
+    seconds: Math.floor(process.uptime())
+  };
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
+});
 
 process.on('SIGINT', () => {
   console.log("Se detectó el cierre del proceso.");

@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
 import axios from 'axios';
 
-// Tarea GA04-35-H18.1-AuthContext-y-persistencia-sesión-refresh legada
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {

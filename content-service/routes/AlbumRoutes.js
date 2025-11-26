@@ -6,10 +6,8 @@ const path = require('path');
 const fs = require('fs');
 
 // Definir rutas para los assets
-const imageDir = path.join(__dirname, '../../undersounds-frontend/src/assets/images');
-const musicDir = path.join(__dirname, '../../undersounds-frontend/src/assets/music');
-
-// Tarea GA04-13-H2.2 Legada
+const imageDir = path.join(__dirname, '../assets/images');
+const musicDir = path.join(__dirname, '../assets/music');
 
 // Configuración mejorada de multer
 const storage = multer.diskStorage({
