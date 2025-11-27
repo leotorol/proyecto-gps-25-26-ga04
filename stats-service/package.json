@@ -1,10 +1,10 @@
 {
   "name": "undersounds-stats-scripts",
   "version": "1.0.0",
-  "main": "import-db.js",
+  "main": "import-db.mjs",
   "scripts": {
-    "mongoimport": "node import-db.js",
-    "mongoexport": "node export-db.js",
+    "mongoimport": "node import-db.mjs",
+    "mongoexport": "node export-db.mjs",
     "start": "python server.py"
   },
   "dependencies": {

@@ -16,7 +16,7 @@ const MerchandisingController = {
   // Obtener por tipo
   async getByType(req, res) {
     try {
-      const type = parseInt(req.params.type);
+      const type = Number.parseInt(req.params.type);
       const merch = await MerchDAO.getBasicMerchByType(type);
       res.status(200).json(merch);
     } catch (error) {
@@ -35,13 +35,13 @@ const MerchandisingController = {
     }
   },
 
-  // Crear nuevo (más adelante lo usaréis con admin)
+  // Crear nuevo
   async createMerch(req, res) {
     try {
       const merchData = { ...req.body };
-      merchData.price = parseFloat(merchData.price); // Convertir precio a número
-      merchData.type = parseInt(merchData.type); // Convertir tipo a número
-      merchData.artistId = parseInt(merchData.artistId); // Convertir artistId a número
+      merchData.price = Number.parseFloat(merchData.price); // Convertir precio a número
+      merchData.type = Number.parseInt(merchData.type); // Convertir tipo a número
+      merchData.artistId = Number.parseInt(merchData.artistId); // Convertir artistId a número
       if (req.file) {
         merchData.image = "http://localhost:5001/assets/images/" + req.file.filename;
       }

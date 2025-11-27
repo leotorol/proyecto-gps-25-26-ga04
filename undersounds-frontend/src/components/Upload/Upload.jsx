@@ -1,71 +1,62 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import {
   Dialog, DialogTitle, DialogContent, TextField, DialogActions,
-  Button, Box, FormControlLabel, Checkbox, MenuItem, Select,
-  InputLabel, FormControl, Typography, Grid
+  Button, Box, MenuItem, Select,
+  InputLabel, FormControl, Typography
 } from '@mui/material';
-import { createAlbum } from '../../services/jamendoService';
-import { fetchArtistsList } from '../../services/jamendoService';
+import Grid2 from '@mui/material/Grid2';
+import { createAlbum, fetchArtistsList } from '../../services/jamendoService';
 import { AuthContext } from '../../context/AuthContext';
 
 const UploadAlbumForm = ({ open, onClose }) => {
   const { user } = useContext(AuthContext);
 
-  const [title, setAlbumName] = useState('');
+  const [albumName, setAlbumName] = useState('');
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('');
   const [coverImage, setCoverImage] = useState(null);
   const [releaseYear, setReleaseYear] = useState(new Date().getFullYear());
   const [tracks, setTracks] = useState([]);
   const [price, setPrice] = useState(9.99);
-  const [label, setLabel] = useState('');
+  const label = '';
 
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtist, setSelectedArtist] = useState('');
 
-  // Usar artistId en lugar de id para la relación correcta
   const [artistId, setArtistId] = useState(user.artistId || '');
   const artistName = user.bandName || user.username || 'Unknown Artist';
 
-  // Verificar si es una banda sin artistId vinculado
   const showArtistIdWarning = user.role === 'band' && !user.artistId;
 
-  //funcion para obtener la lista de artistas en caso de que el usuario sea un sello discográfico
+  // Contador para IDs únicos de pistas
+  const trackIdCounter = useRef(0);
+
   useEffect(() => {
     if (user.role === 'label') {
       fetchArtistsList()
         .then(data => {
-          // Suponiendo que fetchArtists devuelve un objeto con la propiedad artists.
           setArtistsList(data || []);
           console.log("Artistas:", data);
         })
         .catch((error) => console.error('Error fetching artists:', error));
     }
   }, [user.role]);
-  // Función para extraer la duración del archivo de audio
+
   const getAudioDuration = (file) => {
     return new Promise((resolve) => {
-      // Usar URL.createObjectURL para crear una URL temporal para el archivo
       const url = URL.createObjectURL(file);
-
-      // Crear un elemento de audio para obtener metadatos
       const audio = new Audio();
       audio.src = url;
 
-      // Cuando los metadatos estén cargados, obtenemos la duración
       audio.addEventListener('loadedmetadata', () => {
-        // Liberar la URL temporal
         URL.revokeObjectURL(url);
-
-        // Formatear la duración a minutos:segundos
         const minutes = Math.floor(audio.duration / 60);
         const seconds = Math.floor(audio.duration % 60);
         const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
         resolve(formattedDuration);
       });
 
-      // Si hay algún error, resolver con un valor por defecto
       audio.addEventListener('error', () => {
         console.error('Error al leer la duración del archivo de audio');
         URL.revokeObjectURL(url);
@@ -74,71 +65,58 @@ const UploadAlbumForm = ({ open, onClose }) => {
     });
   };
 
-  // Agregar una nueva pista vacía
   const addTrack = () => {
+    trackIdCounter.current += 1;
     setTracks([...tracks, {
+      _uid: `track-${trackIdCounter.current}`,
       title: '',
       file: null,
-      duration: '0:00', // Duración predeterminada
-      autor: artistName // Autor predeterminado (el artista actual)
+      duration: '0:00',
+      autor: artistName
     }]);
   };
 
-  // Actualizar el valor de una pista
-  const updateTrack = (index, field, value) => {
-    const newTracks = [...tracks];
-    newTracks[index][field] = value;
+  const updateTrack = (uid, field, value) => {
+    const newTracks = tracks.map(t => t._uid === uid ? { ...t, [field]: value } : t);
     setTracks(newTracks);
   };
 
   const handleSubmit = async () => {
-    // Validación básica
-    if (!title || !genre || !coverImage || tracks.length === 0) {
+    if (!albumName || !genre || !coverImage || tracks.length === 0) {
       alert("Por favor, completa todos los campos obligatorios (título, género, portada y al menos una pista)");
       return;
     }
 
-    // Validar para usuario que no es sello y que debe tener artistId
     if (user.role === 'band' && !artistId) {
       alert("Error: No se puede subir un álbum sin una cuenta de artista vinculada. Contacta al administrador.");
       return;
     }
 
-    // Validar para sello discogrático que se haya seleccionado un artista representante
     if (user.role === 'label' && !selectedArtist) {
       alert("Por favor, selecciona el artista representante para el álbum.");
       return;
     }
 
-
-    // Formato para enviar
     const formData = new FormData();
-
-    // Campos básicos
-    formData.append('title', title);
+    formData.append('title', albumName);
     formData.append('artistId', user.role === 'label' ? selectedArtist : artistId);
     formData.append('description', description);
     formData.append('releaseYear', releaseYear);
     formData.append('genre', genre);
     formData.append('price', price);
     formData.append('label', label);
-
-    // Archivo de portada
     formData.append('coverImage', coverImage);
 
-    // Tracks - enviamos tanto los metadatos como los archivos
-    tracks.forEach((track, index) => {
-      // Metadatos de cada pista
+    let index = 0;
+    for (const track of tracks) {
       formData.append(`trackTitles[${index}]`, track.title);
       formData.append(`trackDurations[${index}]`, track.duration);
       formData.append(`trackAutors[${index}]`, track.autor);
-
-      // Archivo de audio
       if (track.file) {
         formData.append('tracks', track.file);
       }
-    });
-
+      index += 1;
+    }
 
     try {
       const response = await createAlbum(formData);
@@ -173,9 +151,8 @@ const UploadAlbumForm = ({ open, onClose }) => {
           </Box>
         )}
 
-        <Grid container spacing={2}>
-          {/* Columna izquierda */}
-          <Grid item xs={12} md={6}>
+        <Grid2 container spacing={2}>
+          <Grid2 size={{ xs: 12, md: 6 }}>
             <TextField
               autoFocus
               margin="dense"
@@ -183,7 +160,7 @@ const UploadAlbumForm = ({ open, onClose }) => {
               type="text"
               fullWidth
               variant="outlined"
-              value={title}
+              value={albumName}
               onChange={(e) => setAlbumName(e.target.value)}
               required
             />
@@ -211,7 +188,6 @@ const UploadAlbumForm = ({ open, onClose }) => {
               required
             />
 
-
             <Box mt={2} mb={2} sx={{ display: 'flex', alignItems: 'center' }}>
               <Button
                 variant="contained"
@@ -236,10 +212,9 @@ const UploadAlbumForm = ({ open, onClose }) => {
                 </Typography>
               )}
             </Box>
-          </Grid>
+          </Grid2>
 
-          {/* Columna derecha */}
-          <Grid item xs={12} md={6}>
+          <Grid2 size={{ xs: 12, md: 6 }}>
             <TextField
               margin="dense"
               label="Año de Lanzamiento *"
@@ -247,8 +222,8 @@ const UploadAlbumForm = ({ open, onClose }) => {
               fullWidth
               variant="outlined"
               value={releaseYear}
-              onChange={(e) => setReleaseYear(parseInt(e.target.value, 10) || new Date().getFullYear())}
-              inputProps={{ min: 1900, max: new Date().getFullYear() + 5 }}
+              onChange={(e) => setReleaseYear(Number.parseInt(e.target.value, 10) || new Date().getFullYear())}
+              slotProps={{ htmlInput: { min: 1900, max: new Date().getFullYear() + 5 } }}
               required
             />
 
@@ -259,39 +234,35 @@ const UploadAlbumForm = ({ open, onClose }) => {
               fullWidth
               variant="outlined"
               value={price}
-              onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-              inputProps={{ step: 0.01, min: 0 }}
+              onChange={(e) => setPrice(Number.parseFloat(e.target.value) || 0)}
+              slotProps={{ htmlInput: { step: 0.01, min: 0 } }}
               required
             />
-            {/* Mostrar casilla para seleccionar artista solo si el rol es "label" */}
             {user.role === 'label' && (
               <FormControl fullWidth margin="dense" required>
                 <InputLabel id="select-artist-label">Artista Representante</InputLabel>
                 <Select
                   labelId="select-artist-label"
-                  value={selectedArtist ||""}
+                  value={selectedArtist || ""}
                   label="Artista Representante"
-                  
-                  onChange={(e) =>{                  
-                     setSelectedArtist(e.target.value)
-                     setArtistId(e.target.value)
-                     console.log("artistId", artistId)
-                     
-                     console.log("selectectArtist", e.target.value);
+                  onChange={(e) => {
+                    setSelectedArtist(e.target.value);
+                    setArtistId(e.target.value);
+                    console.log("artistId", artistId);
+                    console.log("selectedArtist", e.target.value);
                   }}
                 >
                   {artistsList.map((artist) => (
                     <MenuItem key={artist._id} value={artist._id}>
-                      {artist.name ||  'Sin Nombre'}
+                      {artist.name || 'Sin Nombre'}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
             )}
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
 
-        {/* Sección de pistas */}
         <Box mt={3}>
           <Typography variant="h6">Pistas del Álbum *</Typography>
           {tracks.length === 0 && (
@@ -300,42 +271,42 @@ const UploadAlbumForm = ({ open, onClose }) => {
             </Typography>
           )}
 
-          {tracks.map((track, index) => (
-            <Box key={index} mb={2} p={2} sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+          {tracks.map((track, idx) => (
+            <Box key={track._uid} mb={2} p={2} sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+              <Grid2 container spacing={2}>
+                <Grid2 size={{ xs: 12, sm: 6 }}>
                   <TextField
-                    label={`Título de la pista ${index + 1} *`}
+                    label={`Título de la pista ${idx + 1} *`}
                     type="text"
                     fullWidth
                     variant="outlined"
                     value={track.title}
-                    onChange={(e) => updateTrack(index, 'title', e.target.value)}
+                    onChange={(e) => updateTrack(track._uid, 'title', e.target.value)}
                     required
                   />
-                </Grid>
-                <Grid item xs={6} sm={3}>
+                </Grid2>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
                   <TextField
                     label="Duración"
                     type="text"
                     fullWidth
                     variant="outlined"
                     value={track.duration}
-                    onChange={(e) => updateTrack(index, 'duration', e.target.value)}
+                    onChange={(e) => updateTrack(track._uid, 'duration', e.target.value)}
                     placeholder="mm:ss"
                   />
-                </Grid>
-                <Grid item xs={6} sm={3}>
+                </Grid2>
+                <Grid2 size={{ xs: 6, sm: 3 }}>
                   <TextField
                     label="Autor"
                     type="text"
                     fullWidth
                     variant="outlined"
                     value={track.autor}
-                    onChange={(e) => updateTrack(index, 'autor', e.target.value)}
+                    onChange={(e) => updateTrack(track._uid, 'autor', e.target.value)}
                   />
-                </Grid>
-                <Grid item xs={12}>
+                </Grid2>
+                <Grid2 size={12}>
                   <Button
                     variant="contained"
                     component="label"
@@ -350,17 +321,12 @@ const UploadAlbumForm = ({ open, onClose }) => {
                       onChange={async (e) => {
                         if (e.target.files.length > 0) {
                           const audioFile = e.target.files[0];
-
-                          // Actualizar el archivo en el estado
-                          updateTrack(index, 'file', audioFile);
-
+                          updateTrack(track._uid, 'file', audioFile);
                           try {
-                            // Obtener y actualizar la duración automáticamente
                             const duration = await getAudioDuration(audioFile);
-                            updateTrack(index, 'duration', duration);
+                            updateTrack(track._uid, 'duration', duration);
                           } catch (error) {
                             console.error('Error al obtener la duración:', error);
-                            // Mantener la duración actual
                           }
                         }
                       }}
@@ -371,8 +337,8 @@ const UploadAlbumForm = ({ open, onClose }) => {
                       {track.file.name}
                     </Typography>
                   )}
-                </Grid>
-              </Grid>
+                </Grid2>
+              </Grid2>
             </Box>
           ))}
 
@@ -392,13 +358,18 @@ const UploadAlbumForm = ({ open, onClose }) => {
           onClick={handleSubmit}
           variant="contained"
           color="primary"
-          disabled={!title || !genre || !coverImage || tracks.length === 0 || !artistId}
+          disabled={!albumName || !genre || !coverImage || tracks.length === 0 || !artistId}
         >
           Publicar Álbum
         </Button>
       </DialogActions>
     </Dialog>
   );
+};
+
+UploadAlbumForm.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export default UploadAlbumForm;

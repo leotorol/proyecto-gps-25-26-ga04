@@ -64,6 +64,7 @@ const UserProfile = () => {
       try {
         new URL(newBannerUrl);
       } catch (err) {
+        console.error(err);
         alert("La URL ingresada no es válida.");
         return;
       }
@@ -90,6 +91,7 @@ const UserProfile = () => {
       try {
         new URL(newProfileImageUrl);
       } catch (err) {
+        console.error("URL inválida:", err);
         alert("La URL ingresada no es válida.");
         return;
       }
@@ -109,47 +111,39 @@ const UserProfile = () => {
     }
   };
 
-  // Exportar métricas (solo para artistas/bandas)
+  // Exportar métricas (solo para artistas)
   const handleExportMetrics = async () => {
     if (!user) return;
-    // Sólo permitir a artistas/bandas
-    if (user.role !== 'band' && user.role !== 'artist') {
+    // Sólo permitir a artistas
+    if (user.role !== 'artist' && user.role !== 'band') {
       alert('Solo artistas pueden exportar métricas.');
       return;
     }
 
-    const format = (prompt('Formato de export (csv/json)', 'csv') || 'csv').toLowerCase();
+    const artistId = user.artistId || user.id || user._id;
+    if (!artistId) {
+      alert('No se encontró ID de artista.');
+      return;
+    }
+
     const startDate = (prompt('Fecha inicio (YYYY-MM-DD) o dejar vacío', '') || '').trim() || null;
     const endDate = (prompt('Fecha fin (YYYY-MM-DD) o dejar vacío', '') || '').trim() || null;
 
     try {
-      const res = await statsService.exportMetrics('plays', format, startDate, endDate);
-      if (format === 'csv') {
-        // res puede ser Blob (axios responseType blob) o string
-        const blob = res instanceof Blob ? res : new Blob([res], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const uid = user.id || user._id || 'user';
-        a.download = `metrics-${uid}-${new Date().toISOString().slice(0,10)}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else {
-        // JSON: abrir en nueva pestaña o descargar
-        const data = res;
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const uid = user.id || user._id || 'user';
-        a.download = `metrics-${uid}-${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
+      const res = await statsService.getArtistKpis(artistId, startDate, endDate);
+      
+      const mimeType = 'application/json';
+      const content = JSON.stringify(res, null, 2);
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kpis-${artistId}-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error exporting metrics:', err);
       alert('Error al exportar métricas. Revisa la consola para más detalles.');
@@ -168,13 +162,23 @@ const UserProfile = () => {
         <button onClick={handleChangeBanner}>Cambiar Banner</button>
       </div>
       <div className="profile-header">
-        <img
-          src={user.profileImage || '/assets/default-profile.jpg'}
-          alt={user.username || user.bandName || 'Usuario'}
-          className="profile-image"
+        <button
+          type="button"
           onClick={handleChangeProfileImage}
-          style={{ cursor: 'pointer' }}
-        />
+          style={{
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+          }}
+          aria-label="Cambiar imagen de perfil"
+        >
+          <img
+            src={user.profileImage || '/assets/default-profile.jpg'}
+            alt={user.username || user.bandName || 'Usuario'}
+            className="profile-image"
+          />
+        </button>
         <div className="profile-info">
           <h2>User Profile</h2>
           <div className="followers">

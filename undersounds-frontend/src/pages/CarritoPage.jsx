@@ -25,8 +25,9 @@ const CarritoPage = () => {
       const response = await axios.post('http://localhost:5001/create-checkout-session', {
         items: cartItems,
       });
-      window.location.href = response.data.url;
+      globalThis.location.href = response.data.url;
     } catch (error) {
+      console.error('Error iniciando pago:', error);
       alert('Error al iniciar el pago.');
     }
   };
@@ -54,7 +55,7 @@ const CarritoPage = () => {
     };
   
     // Guardar el resumen en localStorage
-    localStorage.setItem('orderSummary', JSON.stringify(orderSummary));
+    globalThis.localStorage.setItem('orderSummary', JSON.stringify(orderSummary));
   
     // Iniciar el proceso de pago (por ejemplo, llamando a Stripe)
     handlePago();
@@ -75,7 +76,7 @@ const CarritoPage = () => {
               checked={acceptedTerms}
               onChange={(e) => setAcceptedTerms(e.target.checked)}
             />
-            Acepto los términos y condiciones
+            <span style={{ marginLeft: 8 }}>Acepto los términos y condiciones</span>
           </label>
           <button
             type="button"

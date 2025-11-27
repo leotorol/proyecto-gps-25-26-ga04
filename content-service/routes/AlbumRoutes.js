@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const AlbumController = require('../controller/AlbumController');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Definir rutas para los assets
 const imageDir = path.join(__dirname, '../assets/images');
@@ -20,8 +20,7 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     // Sanitizar el nombre del archivo
-    const cleanName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    // Añadir timestamp para evitar colisiones
+    const cleanName = file.originalname.replaceAll(/[^a-zA-Z0-9._-]/g, '_');    // Añadir timestamp para evitar colisiones
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + '-' + cleanName);
   },

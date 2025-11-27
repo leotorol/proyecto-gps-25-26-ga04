@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Tabs, Tab, Grid, Card, CardMedia, IconButton, Avatar } from '@mui/material';
+import { Box, Typography, Tabs, Tab, Card, CardMedia, Grid2, IconButton, Avatar } from '@mui/material';
 import AlbumIcon from '@mui/icons-material/Album';
 import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +38,6 @@ const TrendingSection = () => {
     setTabValue(newValue);
   };
 
-  // Navega a album asegurando que pasamos el objeto album en location.state
   const goToAlbum = async (albumId) => {
     if (!albumId) return;
     setNavLoading(true);
@@ -47,12 +46,14 @@ const TrendingSection = () => {
       navigate(`/album/${albumId}`, { state: { album } });
     } catch (err) {
       console.error('Error cargando album antes de navegar:', err);
-      // Fallback: navegar sin state (AlbumPage intentará fetch)
       navigate(`/album/${albumId}`);
     } finally {
       setNavLoading(false);
     }
   };
+
+  const trackKey = (track) => track?.id || track?.trackId || `${track?.albumId || 'noalbum'}:${track?.title || ''}`;
+  const artistKey = (artist) => artist?.entityId || artist?.id || artist?.name || Math.random().toString(36).slice(2, 9);
 
   return (
     <Box sx={{ width: '100%', my: 4, px: 2 }}>
@@ -70,10 +71,9 @@ const TrendingSection = () => {
       {loading ? (
         <Typography>Cargando tendencias...</Typography>
       ) : (
-        <Grid container spacing={3}>
-          {/* SECCIÓN TRACKS */}
+        <Grid2 container spacing={3}>
           {tabValue === 0 && trendingTracks.map((track, index) => (
-            <Grid item xs={12} md={6} key={index}>
+            <Grid2 xs={12} md={6} key={trackKey(track)}>
               <Card
                 sx={{ display: 'flex', alignItems: 'center', p: 1, cursor: 'pointer', '&:hover': { boxShadow: 6 } }}
                 onClick={() => {
@@ -106,12 +106,11 @@ const TrendingSection = () => {
                   <AlbumIcon />
                 </IconButton>
               </Card>
-            </Grid>
+            </Grid2>
           ))}
 
-          {/* SECCIÓN ARTISTAS */}
           {tabValue === 1 && trendingArtists.map((artist, index) => (
-            <Grid item xs={12} md={6} key={index}>
+            <Grid2 xs={12} md={6} key={artistKey(artist)}>
               <Card
                 sx={{ display: 'flex', alignItems: 'center', p: 1, cursor: 'pointer', '&:hover': { boxShadow: 6 } }}
                 onClick={() => navigate(`/artistProfile/${artist.entityId || artist.id}`)}
@@ -132,9 +131,9 @@ const TrendingSection = () => {
                   <PersonIcon />
                 </IconButton>
               </Card>
-            </Grid>
+            </Grid2>
           ))}
-        </Grid>
+        </Grid2>
       )}
 
       {((tabValue === 0 && trendingTracks.length === 0) || (tabValue === 1 && trendingArtists.length === 0)) && !loading && (

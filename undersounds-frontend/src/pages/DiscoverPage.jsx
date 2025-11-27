@@ -1,32 +1,29 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
-import { Button } from '@mui/material';
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Card, CardMedia, CardContent, Typography, Grid, CardActionArea } from "@mui/material";
-import { fetchAlbums, fetchArtists } from '../services/jamendoService';
-import { AlbumContext } from "../context/AlbumContext";
-import { merchService } from '../services/merchandisingService'; // Importa el servicio de merchandising
+import { Card, CardMedia, CardContent, Typography, CardActionArea, Button } from "@mui/material";
+import Grid2 from "@mui/material/Grid2";
+import { fetchAlbums } from '../services/jamendoService';
+import { merchService } from '../services/merchandisingService';
 
 const DiscoverPage = () => {
     const location = useLocation();
     const query = new URLSearchParams(location.search);
     const initialFilter = query.get("filter") || "all";
     const [selectedFilter, setSelectedFilter] = useState(initialFilter);
-    const [selectedGenre, setSelectedGenre] = useState(initialFilter); // Track the selected genre
+    const [selectedGenre, setSelectedGenre] = useState(initialFilter);
     const navigate = useNavigate();
-    const { setSelectedAlbumId } = useContext(AlbumContext);
 
     const [albums, setAlbums] = useState([]);
-    const [artists, setArtists] = useState([]);
-    const [merch, setMerch] = useState([]); // Para almacenar las camisetas
+    const [merch, setMerch] = useState([]);
 
     const genreCarouselRef = useRef(null);
 
     const scrollLeft = () => {
-        genreCarouselRef.current.scrollBy({ left: -200, behavior: "smooth" });
+        genreCarouselRef.current?.scrollBy({ left: -200, behavior: "smooth" });
     };
 
     const scrollRight = () => {
-        genreCarouselRef.current.scrollBy({ left: 200, behavior: "smooth" });
+        genreCarouselRef.current?.scrollBy({ left: 200, behavior: "smooth" });
     };
 
     useEffect(() => {
@@ -41,7 +38,6 @@ const DiscoverPage = () => {
         loadData();
     }, []);
 
-    // Cargar las camisetas cuando se seleccione el filtro "tshirts"
     useEffect(() => {
         const loadMerch = async () => {
             try {
@@ -57,8 +53,8 @@ const DiscoverPage = () => {
     useEffect(() => {
         const filterParam = query.get("filter") || "all";
         setSelectedFilter(filterParam);
-        setSelectedGenre(filterParam); // Ensure the genre is also updated
-    }, [location.search]); // query depende de location.search
+        setSelectedGenre(filterParam);
+    }, [location.search]);
 
     const handleAlbumClick = (album) => {
         navigate(`/album/${album.id}`, { state: { album } });
@@ -68,36 +64,33 @@ const DiscoverPage = () => {
         navigate(`/tshirt/${tshirt_Id}`);
     };
 
-    // Change filter when a genre button is clicked
     const handleGenreFilterChange = (newFilter) => {
         setSelectedFilter(newFilter);
-        setSelectedGenre(newFilter); // Update the selected genre when the button is clicked
+        setSelectedGenre(newFilter);
         navigate(`/discover?filter=${newFilter}`);
     };
 
-    const specialFilters = ["vinyl", "cds", "cassettes", "tshirts"];
+    const specialFilters = new Set(["vinyl", "cds", "cassettes", "tshirts"]);
     
     let filteredAlbums = [];
-    let filteredArtists = [];
     let filteredMerch = [];
 
     if (selectedFilter === "all") {
         filteredAlbums = albums;
-        filteredArtists = artists;
         filteredMerch = merch;
-    } else if (specialFilters.includes(selectedFilter)) {
+    } else if (specialFilters.has(selectedFilter)) {
         if (selectedFilter === "vinyl") {
-            filteredMerch = merch.filter((merch) => merch.type === 0);
+            filteredMerch = merch.filter((m) => m.type === 0);
         } else if (selectedFilter === "cds") {
-            filteredMerch = merch.filter((merch) => merch.type === 1);
+            filteredMerch = merch.filter((m) => m.type === 1);
         } else if (selectedFilter === "cassettes") {
-            filteredMerch = merch.filter((merch) => merch.type === 2);
+            filteredMerch = merch.filter((m) => m.type === 2);
         } else if (selectedFilter === "tshirts") {
-            filteredMerch = merch.filter((merch) => merch.type === 3);
+            filteredMerch = merch.filter((m) => m.type === 3);
         }
     } else {
         filteredAlbums = albums.filter(
-            (album) => album.genre.toLowerCase() === selectedFilter.toLowerCase()
+            (album) => album.genre?.toLowerCase() === selectedFilter.toLowerCase()
         );
     }
 
@@ -109,7 +102,6 @@ const DiscoverPage = () => {
         "trap", "bluesrock", "housemusic", "dub", "newwave", "hardrock", "chillwave"
     ];
 
-    // Estilo en línea para el carrusel de géneros (sin archivo CSS externo)
     const genreCarouselStyle = {
         display: "flex",
         overflowX: "auto",
@@ -119,13 +111,13 @@ const DiscoverPage = () => {
         backgroundColor: "#4F6872",
         boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
         flex: 1,
-        msOverflowStyle: "none", // Propiedades para ocultar scrollbar
+        msOverflowStyle: "none",
         scrollbarWidth: "none",
     };
 
     return (
         <div>
-            {(!specialFilters.includes(selectedFilter) || selectedFilter === "all") && (
+            {(!specialFilters.has(selectedFilter) || selectedFilter === "all") && (
                 <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
                     <button
                         onClick={scrollLeft}
@@ -182,9 +174,9 @@ const DiscoverPage = () => {
                     </button>
                 </div>
             )}
-            <Grid container spacing={2}>
+            <Grid2 container spacing={2}>
                 {filteredAlbums.map((album) => (
-                    <Grid item xs={12} sm={6} md={4} key={album.id}>
+                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={album.id}>
                         <Card
                             sx={{
                                 borderRadius: "12px", 
@@ -233,17 +225,17 @@ const DiscoverPage = () => {
                                             variant="h6" 
                                             sx={{ color: "#1976d2", fontWeight: "bold", marginTop: "8px" }}
                                         >
-                                            ${album.price.toFixed(2)}
+                                            ${album.price?.toFixed(2)}
                                         </Typography>
                                     )}
                                 </CardContent>
                             </CardActionArea>
                         </Card>
-                    </Grid>
+                    </Grid2>
                 ))}
 
-                {filteredMerch.map((merch) => (
-                    <Grid item xs={12} sm={6} md={4} key={merch.id}>
+                {filteredMerch.map((m) => (
+                    <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={m.id ?? m._id}>
                         <Card
                             sx={{
                                 borderRadius: "12px",
@@ -257,11 +249,11 @@ const DiscoverPage = () => {
                                 }
                             }}
                         >
-                            <CardActionArea onClick={() => handleTshirtClick(merch._id)}>
+                            <CardActionArea onClick={() => handleTshirtClick(m._id)}>
                                 <CardMedia
                                     component="img"
-                                    alt={`${merch.name} shirt`}
-                                    image={merch.image}
+                                    alt={`${m.name} shirt`}
+                                    image={m.image}
                                     sx={{
                                         aspectRatio: "1 / 1", 
                                         padding: "20px", 
@@ -274,20 +266,20 @@ const DiscoverPage = () => {
                                         variant="h6" 
                                         sx={{ fontWeight: "bold", color: "#333" }}
                                     >
-                                        {merch.name}
+                                        {m.name}
                                     </Typography>
                                     <Typography 
                                         variant="h6" 
                                         sx={{ color: "#1976d2", fontWeight: "bold", marginTop: "8px" }}
                                     >
-                                        ${merch.price.toFixed(2)}
+                                        ${m.price?.toFixed(2)}
                                     </Typography>
                                 </CardContent>
                             </CardActionArea>
                         </Card>
-                    </Grid>
+                    </Grid2>
                 ))}
-            </Grid>
+            </Grid2>
         </div>
     );
 };

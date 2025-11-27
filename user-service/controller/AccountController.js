@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const { withRetry } = require('../utils/httpRetry');
+const logger = require('../utils/logger');
 
 const CONTENT_SERVICE_URL = process.env.CONTENT_SERVICE_URL || 'http://localhost:5001/api';
 const SERVICE_API_KEY = process.env.SERVICE_API_KEY || '';
@@ -72,8 +73,7 @@ async function fetchArtistRemoteById(artistId) {
       return resp.data?.artista || resp.data?.artist || resp.data;
     }, 3, 1000);
   } catch (err) {
-    // En caso de error tras retries, retornar null (no bloquear autenticación)
-    console.warn('fetchArtistRemoteById failed after retries:', err.message);
+    logger.warn({ err: err.message, artistId }, 'fetchArtistRemoteById failed');
     return null;
   }
 }
@@ -118,18 +118,16 @@ class AccountController {
               await AccountDao.linkToArtist(newAccount._id, newArtistId);
               const updatedAccount = await AccountDao.findById(newAccount._id);
               return res.status(201).json(new AccountDTO(updatedAccount));
-            } catch (linkErr) {
-              // Si falla la vinculación en la BD de usuarios, devolvemos la cuenta creada y log
-              console.error('Error vinculando artistId a la cuenta:', linkErr);
+            } catch (error_) {
+              logger.error({ err: error_, accountId: newAccount._id }, 'Error vinculando artistId');
               return res.status(201).json(new AccountDTO(newAccount));
             }
           } else {
-            console.warn('Artist creado remoto pero sin ID:', createdArtist);
+            logger.warn({ createdArtist }, 'Artist creado sin ID');
             return res.status(201).json(new AccountDTO(newAccount));
           }
-        } catch (artistErr) {
-          console.error('Error creando artista remoto:', artistErr.message || artistErr);
-          // Devolver la cuenta creada (sin artist link)
+        } catch (error_) {
+          logger.error({ err: error_.message }, 'Error creando artista remoto');
           return res.status(201).json(new AccountDTO(newAccount));
         }
       }
@@ -156,12 +154,12 @@ class AccountController {
           const artistRemote = await fetchArtistRemoteById(account.artistId);
           if (artistRemote) {
             // Crear una copia ligera del account y adjuntar artist
-            const accountPlain = account.toObject ? account.toObject() : Object.assign({}, account);
+            const accountPlain = account.toObject ? account.toObject() : { ...account };
             accountPlain.artist = artistRemote;
             accountToReturn = accountPlain;
           } // si no hay artistRemote, devolvemos account sin artist
         } catch (err) {
-          console.warn('No se pudo obtener artista remoto en login:', err.message || err);
+          logger.warn({ err: err.message, artistId: account.artistId }, 'Error obteniendo artista en login');
           accountToReturn = account;
         }
       }
@@ -220,12 +218,12 @@ class AccountController {
           try {
             const artistRemote = await fetchArtistRemoteById(account.artistId);
             if (artistRemote) {
-              const accountPlain = account.toObject ? account.toObject() : Object.assign({}, account);
+              const accountPlain = account.toObject ? account.toObject() : { ...account };
               accountPlain.artist = artistRemote;
               accountToReturn = accountPlain;
             }
           } catch (err) {
-            console.warn('No se pudo obtener artista remoto en refreshToken:', err.message || err);
+            logger.warn({ err: err.message, artistId: account.artistId }, 'Error obteniendo artista en refreshToken');
             accountToReturn = account;
           }
         }
@@ -306,7 +304,7 @@ class AccountController {
 
       // Envía el OTP por correo de forma asíncrona
       sendOtpEmail(email, otp).catch(err => {
-        console.error("Error enviando el correo OTP:", err);
+        logger.error({ err, email }, 'Error enviando OTP');
       });
 
       // Responde inmediatamente y envía también el otpToken para que el cliente lo guarde
@@ -324,13 +322,11 @@ class AccountController {
         return res.status(400).json({ error: 'No se ha proporcionado el otpToken' });
       }
 
-      // Muestra el contenido del token sin verificar para debug
-      const decodedPreview = jwt.decode(otpToken);
-
       let decoded;
       try {
         decoded = jwt.verify(otpToken, process.env.OTP_SECRET);
       } catch (err) {
+        logger.warn({ err: err.message, email }, 'OTP token inválido/expirado');
         return res.status(400).json({ error: 'Token OTP inválido o expirado' });
       }
 
@@ -343,7 +339,6 @@ class AccountController {
         return res.status(404).json({ error: 'Correo no encontrado' });
       }
 
-      const hashStart = Date.now();
       account.password = await bcrypt.hash(newPassword, 10);
 
       await account.save();
@@ -395,7 +390,7 @@ class AccountController {
           account: new AccountDTO(updatedAccount)
         });
       } catch (err) {
-        console.error('Error creando artista remoto:', err.message || err);
+        logger.error({ err: err.message, accountId }, 'Error creando artista remoto');
         return res.status(500).json({ error: 'Error creando artista remoto' });
       }
     } catch (error) {
@@ -403,13 +398,13 @@ class AccountController {
     }
   }
 
-    async toggleFollow(req, res) {
+  async toggleFollow(req, res) {
     try {
       const userId = req.user.id; // Viene del middleware de auth
       const { artistId } = req.body;
       
       const account = await AccountDao.findById(userId);
-      const isFollowing = account.following && account.following.includes(String(artistId));
+      const isFollowing = Boolean(account.following?.includes(String(artistId)));
       
       let updatedAccount;
       if (isFollowing) {
@@ -434,7 +429,7 @@ class AccountController {
       const { trackId } = req.body;
       
       const account = await AccountDao.findById(userId);
-      const isLiked = account.likedTracks && account.likedTracks.includes(String(trackId));
+      const isLiked = Boolean(account.likedTracks?.includes(String(trackId)));
       
       let updatedAccount;
       if (isLiked) {

@@ -4,8 +4,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "mongoimport": "node import-db.js",
-    "mongoexport": "node export-db.js"
+    "mongoimport": "node import-db.mjs",
+    "mongoexport": "node export-db.mjs"
   },
   "dependencies": {
     "archiver": "^7.0.1",
@@ -28,6 +28,9 @@
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
+    "pino": "^10.1.0",
+    "pino-http": "^11.0.0",
+    "pino-pretty": "^13.1.2",
     "readline-sync": "^1.4.10",
     "stripe": "^18.0.0",
     "swagger-jsdoc": "^6.2.8",

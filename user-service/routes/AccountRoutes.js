@@ -17,7 +17,6 @@ router.post('/toggle-like', passport.authenticate('jwt', { session: false }), Ac
 router.post('/forgot-password', otpLimiter, AccountController.forgotPassword);
 router.post('/reset-password', otpLimiter, AccountController.resetPassword);
 
-
 // Rutas para OAuth con Google
 router.get('/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
@@ -34,7 +33,6 @@ router.get('/google/callback',
   }
 );
 
-// Asegúrate de tener esta ruta definida
 router.get('/me', passport.authenticate('jwt', { session: false }), (req, res) => {  
   // Devolver la información del usuario
   res.json({ account: new AccountDTO(req.user) });

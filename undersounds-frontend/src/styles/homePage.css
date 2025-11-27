@@ -17,7 +17,7 @@ body {
 /* Banner principal */
 .homepage-banner {
     background-color: #1DA0C3;
-    color: white;
+    color: rgb(0, 0, 0);
     padding: 40px 20px;
     margin-bottom: 30px;
     border-radius: 4px;
@@ -116,10 +116,6 @@ a {
     margin-right: 25px;
 }
 
-.navigation a {
-    border-bottom: 2px solid transparent; /* Quita el subrayado azul al estado de hover o active */
-}
-
 .navigation a:hover,
 .navigation a.active {
     border-bottom-color: transparent; /* O cambia el color a uno diferente si lo deseas */
@@ -162,7 +158,7 @@ a:focus {
 
 .search-bar button {
     background: #1DA0C3;
-    color: white;
+    color: rgb(0, 0, 0);
     border: none;
     padding: 12px 20px;
     font-weight: bold;
@@ -257,7 +253,7 @@ a:focus {
     background-color: #1DA0C3;  /* Color azul */
     border: none;
     border-radius: 5px;
-    color: white;
+    color: rgb(0, 0, 0);
     cursor: pointer;
     font-size: 1.2rem;
     transition: background-color 0.3s;

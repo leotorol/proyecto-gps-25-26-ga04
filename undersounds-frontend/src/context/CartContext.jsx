@@ -1,47 +1,53 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useCallback, useMemo } from 'react';
+import PropTypes from 'prop-types';
 
-export const CartContext = createContext();
+export const CartContext = createContext({
+  cartItems: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {}
+});
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
 
-  const addToCart = (item) => {
+  const addToCart = useCallback((item) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id);
       if (existingItem) {
-        // Incrementar la cantidad si el producto ya existe
         return prevItems.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      // Agregar el producto con cantidad inicial de 1
       return [...prevItems, { ...item, quantity: 1 }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (id) => {
-    setCartItems((prevItems) =>
-      prevItems.filter((item) => item.id !== id)
-    );
-  };
+  const removeFromCart = useCallback((id) => {
+    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  }, []);
 
-  const updateQuantity = (id, quantity) => {
+  const updateQuantity = useCallback((id, quantity) => {
     setCartItems((prevItems) =>
       prevItems.map((item) =>
         item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
       )
     );
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
-  };
+  }, []);
 
-  return (
-    <CartContext.Provider
-      value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart }}
-    >
-      {children}
-    </CartContext.Provider>
+  const value = useMemo(
+    () => ({ cartItems, addToCart, removeFromCart, updateQuantity, clearCart }),
+    [cartItems, addToCart, removeFromCart, updateQuantity, clearCart]
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
+
+CartProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

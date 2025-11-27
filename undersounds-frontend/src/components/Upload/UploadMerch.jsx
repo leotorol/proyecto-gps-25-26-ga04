@@ -1,8 +1,10 @@
 import React, { useState, useContext, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   Dialog, DialogTitle, DialogContent, TextField, DialogActions,
-  Button, Box, FormControl, InputLabel, MenuItem, Select, Typography, Grid
+  Button, Box, FormControl, InputLabel, MenuItem, Select, Typography
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import { createMerch } from '../../services/merchandisingService';
 import { fetchArtistsList } from '../../services/jamendoService';
 import { AuthContext } from '../../context/AuthContext';
@@ -13,14 +15,13 @@ const UploadMerchForm = ({ open, onClose }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
-  const [type, setMerchType] = useState(0); // 0 = Vinilo, por defecto
+  const [merchType, setMerchType] = useState(0); // 0 = Vinilo, por defecto
   const [image, setImage] = useState(null);
 
   const [artistsList, setArtistsList] = useState([]);
   const [selectedArtist, setSelectedArtist] = useState('');
   const [artistId, setArtistId] = useState(user.artistId || '');
 
-  // Mostrar advertencia si es banda sin artistId vinculado
   const showArtistIdWarning = user.role === 'band' && !user.artistId;
 
   useEffect(() => {
@@ -52,7 +53,7 @@ const UploadMerchForm = ({ open, onClose }) => {
     formData.append('name', name);
     formData.append('description', description);
     formData.append('price', price);
-    formData.append('type', type);
+    formData.append('type', merchType);
     formData.append('image', image);
     formData.append('artistId', user.role === 'label' ? selectedArtist : artistId);
 
@@ -82,8 +83,8 @@ const UploadMerchForm = ({ open, onClose }) => {
           </Box>
         )}
 
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
+        <Grid2 container spacing={2}>
+          <Grid2 size={12}>
             <TextField
               autoFocus
               margin="dense"
@@ -95,8 +96,8 @@ const UploadMerchForm = ({ open, onClose }) => {
               onChange={(e) => setName(e.target.value)}
               required
             />
-          </Grid>
-          <Grid item xs={12}>
+          </Grid2>
+          <Grid2 size={12}>
             <TextField
               margin="dense"
               label="Descripción *"
@@ -109,8 +110,8 @@ const UploadMerchForm = ({ open, onClose }) => {
               onChange={(e) => setDescription(e.target.value)}
               required
             />
-          </Grid>
-          <Grid item xs={6}>
+          </Grid2>
+          <Grid2 size={6}>
             <TextField
               margin="dense"
               label="Precio (€) *"
@@ -118,17 +119,17 @@ const UploadMerchForm = ({ open, onClose }) => {
               fullWidth
               variant="outlined"
               value={price}
-              onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-              inputProps={{ step: 0.01, min: 0 }}
+              onChange={(e) => setPrice(Number.parseFloat(e.target.value) || 0)}
+              slotProps={{ htmlInput: { step: 0.01, min: 0 } }}
               required
             />
-          </Grid>
-          <Grid item xs={6}>
+          </Grid2>
+          <Grid2 size={6}>
             <FormControl fullWidth margin="dense" required>
               <InputLabel id="select-merch-type-label">Tipo *</InputLabel>
               <Select
                 labelId="select-merch-type-label"
-                value={type}
+                value={merchType}
                 label="Tipo *"
                 onChange={(e) => setMerchType(e.target.value)}
               >
@@ -139,8 +140,8 @@ const UploadMerchForm = ({ open, onClose }) => {
                 <MenuItem value={4}>Otros</MenuItem>
               </Select>
             </FormControl>
-          </Grid>
-          <Grid item xs={12}>
+          </Grid2>
+          <Grid2 size={12}>
             <Box mt={2} mb={2} sx={{ display: 'flex', alignItems: 'center' }}>
               <Button
                 variant="contained"
@@ -165,9 +166,9 @@ const UploadMerchForm = ({ open, onClose }) => {
                 </Typography>
               )}
             </Box>
-          </Grid>
+          </Grid2>
           {user.role === 'label' && (
-            <Grid item xs={12}>
+            <Grid2 size={12}>
               <FormControl fullWidth margin="dense" required>
                 <InputLabel id="select-artist-label">Artista Representante</InputLabel>
                 <Select
@@ -187,9 +188,9 @@ const UploadMerchForm = ({ open, onClose }) => {
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
+            </Grid2>
           )}
-        </Grid>
+        </Grid2>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} color="inherit">Cancelar</Button>
@@ -204,6 +205,11 @@ const UploadMerchForm = ({ open, onClose }) => {
       </DialogActions>
     </Dialog>
   );
+};
+
+UploadMerchForm.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export default UploadMerchForm;

@@ -1,22 +1,25 @@
 import React, { useState, useContext } from 'react';
+import PropTypes from 'prop-types';
 import {
     Dialog, DialogTitle, DialogContent, TextField, DialogActions,
-    Button, Box, Typography, Grid
+    Button, Box, Typography
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import { createArtist } from '../../services/artistService';
 import { AuthContext } from '../../context/AuthContext';
 
 const UploadArtistForm = ({ open, onClose }) => {
     const { user } = useContext(AuthContext);
 
-    // Solo disponible para sellos discográficos
-    if (user.role !== 'label') return null;
-
+    // Los hooks DEBEN llamarse siempre en el mismo orden, antes de cualquier return
     const [name, setName] = useState('');
     const [genre, setGenre] = useState('');
     const [bio, setBio] = useState('');
     const [profileImage, setProfileImage] = useState(null);
     const [banner, setBanner] = useState(null);
+
+    // Solo disponible para sellos discográficos (return después de hooks)
+    if (user.role !== 'label') return null;
 
     const handleSubmit = async () => {
         if (!name || !genre || !bio || !profileImage) {
@@ -28,12 +31,11 @@ const UploadArtistForm = ({ open, onClose }) => {
         formData.append('genre', genre);
         formData.append('bio', bio);
         formData.append('profileImage', profileImage);
-        if(banner) formData.append('banner', banner);
-        // Puedes agregar otros campos opcionales como ubicacion
+        if (banner) formData.append('banner', banner);
 
         try {
             const response = await createArtist(formData);
-            if(response.success){
+            if (response.success) {
                 alert("Artista creado correctamente");
                 onClose();
             } else {
@@ -49,8 +51,8 @@ const UploadArtistForm = ({ open, onClose }) => {
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>Subir Nuevo Artista</DialogTitle>
             <DialogContent>
-                <Grid container spacing={2}>
-                    <Grid item xs={12}>
+                <Grid2 container spacing={2}>
+                    <Grid2 size={12}>
                         <TextField
                             autoFocus
                             margin="dense"
@@ -62,8 +64,8 @@ const UploadArtistForm = ({ open, onClose }) => {
                             onChange={(e) => setName(e.target.value)}
                             required
                         />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Grid2>
+                    <Grid2 size={12}>
                         <TextField
                             margin="dense"
                             label="Género Musical *"
@@ -74,8 +76,8 @@ const UploadArtistForm = ({ open, onClose }) => {
                             onChange={(e) => setGenre(e.target.value)}
                             required
                         />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Grid2>
+                    <Grid2 size={12}>
                         <TextField
                             margin="dense"
                             label="Biografía *"
@@ -88,8 +90,8 @@ const UploadArtistForm = ({ open, onClose }) => {
                             onChange={(e) => setBio(e.target.value)}
                             required
                         />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Grid2>
+                    <Grid2 size={12}>
                         <Box mt={2} mb={2} sx={{ display: 'flex', alignItems: 'center' }}>
                             <Button
                                 variant="contained"
@@ -114,8 +116,8 @@ const UploadArtistForm = ({ open, onClose }) => {
                                 </Typography>
                             )}
                         </Box>
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Grid2>
+                    <Grid2 size={12}>
                         <Box mt={2} mb={2} sx={{ display: 'flex', alignItems: 'center' }}>
                             <Button
                                 variant="contained"
@@ -140,8 +142,8 @@ const UploadArtistForm = ({ open, onClose }) => {
                                 </Typography>
                             )}
                         </Box>
-                    </Grid>
-                </Grid>
+                    </Grid2>
+                </Grid2>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose} color="inherit">Cancelar</Button>
@@ -151,6 +153,11 @@ const UploadArtistForm = ({ open, onClose }) => {
             </DialogActions>
         </Dialog>
     );
+};
+
+UploadArtistForm.propTypes = {
+    open: PropTypes.bool.isRequired,
+    onClose: PropTypes.func.isRequired,
 };
 
 export default UploadArtistForm;

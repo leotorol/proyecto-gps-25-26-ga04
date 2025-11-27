@@ -47,25 +47,7 @@ const getArtistKpis = async (artistId, startDate = null, endDate = null) => {
 };
 
 /**
- * Obtiene rankings (Top 10)
- * @param {'track'|'album'|'artist'} type 
- * @param {'day'|'week'|'month'|'year'} period 
- * @param {number} limit 
- */
-const getTop = async (type, period = 'week', limit = 10) => {
-  try {
-    const res = await axios.get(`${STATS_API}/stats/top`, {
-      params: { type, period, limit }
-    });
-    return res.data;
-  } catch (error) {
-    console.error('Error fetching top stats:', error);
-    return [];
-  }
-};
-
-/**
- * Obtiene tendencias (Trending)
+ * Obtiene tendencias
  * @param {'tracks'|'artists'|'albums'} type 
  * @param {number} limit 
  * @param {'day'|'week'|'month'} period 
@@ -120,27 +102,4 @@ const getSimilarRecommendations = async (genre, limit = 10, excludeId = null) =>
   }
 };
 
-/**
- * Exporta métricas (CSV o JSON)
- * Retorna la URL del blob para descargar o los datos JSON
- */
-const exportMetrics = async (type = 'plays', format = 'csv', startDate = null, endDate = null) => {
-  try {
-    const params = { type, format };
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-
-    const responseType = format === 'csv' ? 'blob' : 'json';
-    
-    const res = await axios.get(`${STATS_API}/stats/export`, { 
-      params,
-      responseType 
-    });
-    return res.data;
-  } catch (error) {
-    console.error('Error exporting metrics:', error);
-    throw error;
-  }
-};
-
-export const statsService = { sendEvent,getArtistKpis,getTop,getTrending,getUserRecommendations,getSimilarRecommendations,exportMetrics };
+export const statsService = { sendEvent,getArtistKpis,getTrending,getUserRecommendations,getSimilarRecommendations };

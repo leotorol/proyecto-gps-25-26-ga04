@@ -1,8 +1,8 @@
 // Archivo: undersounds-backend/services/AudioConverterService.js
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Configurar ffmpeg para usar la versión estática
 ffmpeg.setFfmpegPath(ffmpegPath);

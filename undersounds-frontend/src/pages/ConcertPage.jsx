@@ -18,8 +18,8 @@ const ConcertPage = () => {
   let concert = concertFromState;
 
   if (!concert) {
-    const artist = artists.find(a => a.id === parseInt(artistId));
-    concert = artist?.concerts.find(c => c.id === parseInt(concertId));
+    const artist = artists.find(a => a.id === Number.parseInt(artistId));
+    concert = artist?.concerts.find(c => c.id === Number.parseInt(concertId));
   }
 
   if (!concert) {
@@ -139,7 +139,7 @@ const ConcertPage = () => {
 
           <Typography 
             variant="body1" 
-            paragraph
+            component="p"
             sx={{ 
               color: '#444',
               lineHeight: 1.8,

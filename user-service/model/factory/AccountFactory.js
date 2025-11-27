@@ -1,10 +1,17 @@
 class AccountFactory {
   createAccount(data) {
+    let role = 'fan';
+    if (data.bandName) {
+      role = 'band';
+    } else if (data.labelName) {
+      role = 'label';
+    }
+
     return {
       username: data.username,
       email: data.email,
-      password: data.password, 
-      role: data.bandName ? 'band' : data.labelName ? 'label' : 'fan',
+      password: data.password,
+      role,
       profileImage: data.profileImage || '/assets/images/default-user.jpg',
       bannerImage: data.bannerImage || '/assets/images/default.jpg',
       followers: data.followers || 0,
@@ -17,7 +24,6 @@ class AccountFactory {
       labelName: data.labelName,
       website: data.website,
       purchaseHistory: [],
-      // Incluir artistId si está presente en los datos
       ...(data.artistId && { artistId: data.artistId })
     };
   }

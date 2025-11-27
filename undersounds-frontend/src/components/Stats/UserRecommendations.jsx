@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Box, Typography, Grid, Card, CardMedia, CardContent, Button } from '@mui/material';
+import PropTypes from 'prop-types';
+import { Box, Typography, Card, CardMedia, Grid2, CardContent, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { statsService } from '../../services/statsService';
 import { fetchAlbumById } from '../../services/jamendoService';
@@ -34,7 +35,7 @@ const UserRecommendations = ({ limit = 8 }) => {
               return { ...r, artist };
             }
           } catch (e) {
-            // ignore enrichment errors, return original
+            console.warn('Enrichment failed for recommendation', { rec: r, error: e });
           }
           return r;
         }));
@@ -67,24 +68,30 @@ const UserRecommendations = ({ limit = 8 }) => {
     }
   };
 
+  const stableKeyFor = (it) => {
+    const id = it.id || it.album?.id || it.artist?.id;
+    if (id) return `${it.type}-${id}`;
+    const title = (it.album?.title || it.title || it.name || it.artistName || '').trim();
+    if (title) return `${it.type}-${encodeURIComponent(title.slice(0, 40))}`;
+    return `${it.type}-noid`;
+  };
+
   if (loading) return <Typography>Loading recommendations...</Typography>;
   if (!items || items.length === 0) return <Typography>No hay recomendaciones todavía.</Typography>;
 
   return (
     <Box sx={{ mt: 4 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>Para ti</Typography>
-      <Grid container spacing={2}>
-        {items.map((it, idx) => {
-          const key = it.id || it.album?.id || idx;
+      <Grid2 container spacing={2}>
+        {items.map((it) => {
+          const key = stableKeyFor(it);
 
-          // Title / subtitle logic
-          let title = 'Item';
+          let title = '';
           let subtitle = '';
           let img = '/assets/images/default-cover.jpg';
 
           if (it.type === 'album') {
             title = it.album?.title || it.title || 'Álbum';
-            // artist can be string or object
             const artistField = it.album?.artist || it.album?.artistName || it.artist || it.artistName;
             if (typeof artistField === 'string') {
               subtitle = artistField;
@@ -106,7 +113,7 @@ const UserRecommendations = ({ limit = 8 }) => {
           }
 
           return (
-            <Grid item xs={12} sm={6} md={3} key={key}>
+            <Grid2 item xs={12} sm={6} md={3} key={key}>
               <Card
                 sx={{ cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
                 onClick={(e) => handleClick(it, e)}
@@ -125,12 +132,16 @@ const UserRecommendations = ({ limit = 8 }) => {
                   <Button fullWidth size="small" variant="outlined" onClick={(e) => handleClick(it, e)}>Ver</Button>
                 </Box>
               </Card>
-            </Grid>
+            </Grid2>
           );
         })}
-      </Grid>
+      </Grid2>
     </Box>
   );
+};
+
+UserRecommendations.propTypes = {
+  limit: PropTypes.number,
 };
 
 export default UserRecommendations;

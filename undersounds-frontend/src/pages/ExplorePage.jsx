@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Grid, TextField, Tabs, Tab, Typography } from '@mui/material';
+import { Box, TextField, Tabs, Tab, Typography } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import { Link, useLocation } from 'react-router-dom';
 import { getFormattedAlbumDuration } from '../utils/formatters';
 import { fetchAlbums } from '../services/jamendoService';
-import { fetchArtists } from '../services/artistService'; // Added import for artists
+import { fetchArtists } from '../services/artistService';
 import '../styles/explorepage.css';
 
 const ExplorePage = () => {
   // States for data
   const [albums, setAlbums] = useState([]);
-  const [artists, setArtists] = useState([]); // Artists will now be loaded
-  const [tracks, setTracks] = useState([]);   // Tracks will be extracted from albums
+  const [artists, setArtists] = useState([]);
+  const [tracks, setTracks] = useState([]);
 
   // States for search and filtering
   const [searchTerm, setSearchTerm] = useState('all');
@@ -43,7 +44,7 @@ const ExplorePage = () => {
     loadAlbums();
   }, []);
 
-  // Load artists using fetchArtists (similar to ArtistProfile)
+  // Load artists using fetchArtists
   useEffect(() => {
     const loadArtists = async () => {
       try {
@@ -100,8 +101,8 @@ const ExplorePage = () => {
 
   // Render an album with its details
   const renderAlbumItem = (album) => (
-    <Grid item key={album.id} className="item-container">
-      <Grid
+    <Grid2 key={album.id} className="item-container">
+      <Grid2
         container
         spacing={2}
         alignItems="center"
@@ -109,7 +110,7 @@ const ExplorePage = () => {
         wrap="nowrap"
         style={{ gap: '10px' }}
       >
-        <Grid item xs="auto" sm="auto">
+        <Grid2 xs="auto" sm="auto">
           <div className="album-image-container">
             <img
               src={
@@ -126,8 +127,8 @@ const ExplorePage = () => {
               }}
             />
           </div>
-        </Grid>
-        <Grid item xs={6} sm={8}>
+        </Grid2>
+        <Grid2 xs={6} sm={8}>
           <div className="album-details">
             <Typography
               variant="caption"
@@ -155,16 +156,16 @@ const ExplorePage = () => {
               Genre: {album.genre}
             </Typography>
           </div>
-        </Grid>
-      </Grid>
-    </Grid>
+        </Grid2>
+      </Grid2>
+    </Grid2>
   );
 
   // Render a track item with album details included
   const renderTrackItem = (track) => (
-    <Grid item key={track.id} className="item-container">
-      <Grid container spacing={2} alignItems="flex-start" className="track-item" wrap="nowrap" style={{ gap: '10px' }}>
-        <Grid item xs="auto" sm="auto">
+    <Grid2 key={track.id} className="item-container">
+      <Grid2 container spacing={2} alignItems="flex-start" className="track-item" wrap="nowrap" style={{ gap: '10px' }}>
+        <Grid2 xs="auto" sm="auto">
           <div className="track-image-container">
             <img
               src={track.album_cover || track.artwork || '/assets/images/default-cover.jpg'}
@@ -173,8 +174,8 @@ const ExplorePage = () => {
               style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
             />
           </div>
-        </Grid>
-        <Grid item xs={6} sm={8}>
+        </Grid2>
+        <Grid2 xs={6} sm={8}>
           <div className="track-details" style={{ textAlign: 'left' }}>
             <Typography variant="caption" display="block" className="item-type">
               Canción
@@ -195,56 +196,15 @@ const ExplorePage = () => {
               Duración: {track.duration}
             </Typography>
           </div>
-        </Grid>
-      </Grid>
-    </Grid>
+        </Grid2>
+      </Grid2>
+    </Grid2>
   );
 
-  // Render an artist section
-  const renderArtistSection = (artist) => {
-    const artistAlbums = albums.filter(
-      (album) =>
-        ((album.artist || album.artist_name) || '')
-          .toLowerCase() === artist.name.toLowerCase()
-    );
-    const artistTracks = tracks.filter(
-      (track) =>
-        ((track.artist || track.artist_name) || '')
-          .toLowerCase() === artist.name.toLowerCase()
-    );
-    return (
-      <div key={artist.id} className="artist-section" style={{ marginBottom: '2rem' }}>
-        <Typography variant="h5" sx={{ marginBottom: '1rem' }}>
-          {artist.name}
-        </Typography>
-        {artistAlbums.length > 0 && (
-          <div>
-            <Typography variant="subtitle1" sx={{ marginBottom: '0.5rem' }}>
-              Álbumes:
-            </Typography>
-            <Grid container direction="column" spacing={2}>
-              {artistAlbums.map(renderAlbumItem)}
-            </Grid>
-          </div>
-        )}
-        {artistTracks.length > 0 && (
-          <div>
-            <Typography variant="subtitle1" sx={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-              Canciones:
-            </Typography>
-            <Grid container direction="column" spacing={2}>
-              {artistTracks.map(renderTrackItem)}
-            </Grid>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // New rendering function: formatted similar to album and track items.
+  // Render an artist item
   const renderArtistItem = (artist) => (
-    <Grid item key={artist.id} className="item-container">
-      <Grid
+    <Grid2 key={artist.id} className="item-container">
+      <Grid2
         container
         spacing={2}
         alignItems="center"
@@ -252,7 +212,7 @@ const ExplorePage = () => {
         wrap="nowrap"
         style={{ gap: '10px' }}
       >
-        <Grid item xs="auto" sm="auto">
+        <Grid2 xs="auto" sm="auto">
           <div className="album-image-container">
             <img
               src={
@@ -262,15 +222,14 @@ const ExplorePage = () => {
               alt={artist.name}
               className="album-image"
               style={{ width: '100%', height: '100%', borderRadius: '8px' }}
-
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = '/assets/images/default-avatar.jpg';
               }}
             />
           </div>
-        </Grid>
-        <Grid item xs={6} sm={8}>
+        </Grid2>
+        <Grid2 xs={6} sm={8}>
           <div className="album-details">
             <Typography
               variant="caption"
@@ -290,9 +249,9 @@ const ExplorePage = () => {
               </Typography>
             )}
           </div>
-        </Grid>
-      </Grid>
-    </Grid>
+        </Grid2>
+      </Grid2>
+    </Grid2>
   );
 
   // Build filtered content based on selected filter
@@ -302,23 +261,23 @@ const ExplorePage = () => {
       <>
         {getFilteredAlbums().length > 0 && (
           <div className="filtered-section">
-            <Grid container direction="column" spacing={2}>
+            <Grid2 container direction="column" spacing={2}>
               {getFilteredAlbums().map(renderAlbumItem)}
-            </Grid>
+            </Grid2>
           </div>
         )}
         {getFilteredTracks().length > 0 && (
           <div className="filtered-section">
-            <Grid container direction="column" spacing={2}>
+            <Grid2 container direction="column" spacing={2}>
               {getFilteredTracks().map(renderTrackItem)}
-            </Grid>
+            </Grid2>
           </div>
         )}
         {getFilteredArtists().length > 0 && (
           <div className="filtered-section">
-            <Grid container direction="column" spacing={2}>
+            <Grid2 container direction="column" spacing={2}>
               {getFilteredArtists().map(renderArtistItem)}
-            </Grid>
+            </Grid2>
           </div>
         )}
       </>
@@ -326,40 +285,40 @@ const ExplorePage = () => {
   } else if (filter === 'albums') {
     filteredContent = (
       <div className="filtered-section">
-        <Grid container direction="column" spacing={2}>
+        <Grid2 container direction="column" spacing={2}>
           {getFilteredAlbums().map(renderAlbumItem)}
           {getFilteredAlbums().length === 0 && (
-            <Grid item>
+            <Grid2>
               <div className="no-results">No albums found</div>
-            </Grid>
+            </Grid2>
           )}
-        </Grid>
+        </Grid2>
       </div>
     );
   } else if (filter === 'tracks') {
     filteredContent = (
       <div className="filtered-section">
-        <Grid container direction="column" spacing={2}>
+        <Grid2 container direction="column" spacing={2}>
           {getFilteredTracks().map(renderTrackItem)}
           {getFilteredTracks().length === 0 && (
-            <Grid item>
+            <Grid2>
               <div className="no-results">No tracks found</div>
-            </Grid>
+            </Grid2>
           )}
-        </Grid>
+        </Grid2>
       </div>
     );
   } else if (filter === 'artists') {
     filteredContent = (
       <div className="filtered-section">
-        <Grid container direction="column" spacing={2}>
+        <Grid2 container direction="column" spacing={2}>
           {getFilteredArtists().map(renderArtistItem)}
           {getFilteredArtists().length === 0 && (
-            <Grid item>
+            <Grid2>
               <div className="no-results">No artists found</div>
-            </Grid>
+            </Grid2>
           )}
-        </Grid>
+        </Grid2>
       </div>
     );
   }

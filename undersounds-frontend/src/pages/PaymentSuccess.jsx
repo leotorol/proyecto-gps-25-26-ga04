@@ -3,7 +3,6 @@ import {
   Typography, 
   Card, 
   CardContent, 
-  Grid, 
   Button, 
   Select, 
   MenuItem,
@@ -11,6 +10,7 @@ import {
   Snackbar,
   Alert
 } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import { Link, useNavigate } from 'react-router-dom';
 import { downloadTrack, downloadAlbum } from '../services/jamendoService';
 import { statsService } from '../services/statsService'; 
@@ -18,28 +18,23 @@ import { AuthContext } from '../context/AuthContext';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
-  // FIX: Extraemos 'loading' para esperar a que la sesión se restaure
   const { user, loading } = useContext(AuthContext); 
   
   const [orderSummary, setOrderSummary] = useState(null);
   const [selectedFormats, setSelectedFormats] = useState({});
-  const [loadingDownload, setLoadingDownload] = useState({}); // Renombrado para evitar conflicto con loading de Auth
+  const [loadingDownload, setLoadingDownload] = useState({});
   const [notification, setNotification] = useState({ 
     open: false, 
     message: '', 
     severity: 'info' 
   });
 
-  // Ref para evitar doble envío en React StrictMode o recargas rápidas
   const eventSentRef = useRef(false);
 
   useEffect(() => {
-    // FIX: Si AuthContext está cargando, esperamos.
     if (loading) return;
 
     const storedSummary = localStorage.getItem('orderSummary');
-    
-    // 1. SEGURIDAD: Si no hay resumen, expulsar al usuario
     if (!storedSummary) {
       navigate('/');
       return;
@@ -49,26 +44,22 @@ const PaymentSuccess = () => {
       const parsedSummary = JSON.parse(storedSummary);
       setOrderSummary(parsedSummary);
       
-      // Inicializar formatos
       const initialFormats = {};
       if (parsedSummary.items) {
-        parsedSummary.items.forEach(item => {
+        for (const item of parsedSummary.items) {
           initialFormats[item.id] = 'mp3';
-        });
+        }
       }
       setSelectedFormats(initialFormats);
 
-      // 2. ENVÍO DE EVENTO (Solo si no se ha enviado ya)
       if (!parsedSummary.eventSent && !eventSentRef.current) {
-        eventSentRef.current = true; // Bloqueo inmediato en memoria
+        eventSentRef.current = true;
 
-        // Usamos setTimeout para no bloquear el renderizado inicial
         setTimeout(() => {
           statsService.sendEvent('order.paid', {
             entityType: 'order',
             entityId: Date.now().toString(),
-            // FIX: Ahora user estará disponible si existe
-            userId: user?._id?.toString() || user?.id?.toString() || null,
+            userId: user?._id?.toString() ?? user?.id?.toString() ?? null,
             metadata: {
               price: Number(parsedSummary.total) || 0, 
               currency: 'EUR',
@@ -76,7 +67,6 @@ const PaymentSuccess = () => {
             }
           }).then(() => {
             console.log('Evento de pago registrado');
-            // 3. PERSISTENCIA: Marcar como enviado en localStorage
             parsedSummary.eventSent = true;
             localStorage.setItem('orderSummary', JSON.stringify(parsedSummary));
           }).catch(err => console.warn('Error enviando stats:', err));
@@ -87,7 +77,7 @@ const PaymentSuccess = () => {
       console.error("Error procesando resumen de pedido:", error);
       navigate('/');
     }
-  }, [navigate, user, loading]); // FIX: Añadido loading a dependencias
+  }, [navigate, user, loading]);
 
   const handleFormatChange = (itemId, value) => {
     setSelectedFormats(prev => ({ ...prev, [itemId]: value }));
@@ -112,7 +102,7 @@ const PaymentSuccess = () => {
       showNotification(`Descarga de "${item.name || item.title}" completada con éxito`, 'success');
     } catch (error) {
       console.error('Error en la descarga:', error);
-      showNotification(`Error al descargar: ${error.message}`, 'error');
+      showNotification(`Error al descargar: ${error?.message ?? 'Error desconocido'}`, 'error');
     } finally {
       setLoadingDownload(prev => ({ ...prev, [item.id]: false }));
     }
@@ -128,7 +118,7 @@ const PaymentSuccess = () => {
       showNotification(`Descarga del álbum "${item.name || item.title}" completada con éxito`, 'success');
     } catch (error) {
       console.error('Error en la descarga del álbum:', error);
-      showNotification(`Error al descargar el álbum: ${error.message}`, 'error');
+      showNotification(`Error al descargar el álbum: ${error?.message ?? 'Error desconocido'}`, 'error');
     } finally {
       setLoadingDownload(prev => ({ ...prev, [item.id]: false }));
     }
@@ -142,8 +132,7 @@ const PaymentSuccess = () => {
     }
   };
 
-  // Renderizado de carga o error
-  if (loading || !orderSummary || !orderSummary.items) {
+  if (loading || !orderSummary?.items) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <CircularProgress />
@@ -162,15 +151,15 @@ const PaymentSuccess = () => {
       <Typography variant="h6" gutterBottom>
         Resumen del pedido:
       </Typography>
-      <Grid container spacing={2}>
-        {items.map((item, index) => {
-          // BLINDAJE: Convertir a número explícitamente para evitar crash
+      <Grid2 container spacing={2}>
+        {items.map((item) => {
           const price = Number(item.price) || 0;
           const quantity = Number(item.quantity) || 1;
           const totalItem = price * quantity;
+          const itemKey = item.id ?? item.trackId ?? item.name ?? `${price}-${quantity}`;
 
           return (
-            <Grid item xs={12} md={6} key={index}>
+            <Grid2 xs={12} md={6} key={itemKey}>
               <Card sx={{ height: '100%' }}>
                 <CardContent>
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
@@ -222,10 +211,10 @@ const PaymentSuccess = () => {
                   )}
                 </CardContent>
               </Card>
-            </Grid>
+            </Grid2>
           );
         })}
-      </Grid>
+      </Grid2>
       
       <Button 
         variant="contained" 

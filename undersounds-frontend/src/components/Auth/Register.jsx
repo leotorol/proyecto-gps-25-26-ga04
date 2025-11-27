@@ -109,7 +109,8 @@ const Register = (props) => {
       await register(formData);
       navigate('/login');
     } catch (err) {
-      setError('Ya existe una cuenta asociada a este correo.');
+      console.error('login error:', err);
+      setError('Ya existe una cuenta asociada a este correo electrónico');
     }
   };
 

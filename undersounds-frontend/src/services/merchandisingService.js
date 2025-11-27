@@ -3,7 +3,7 @@ import axios from 'axios';
 // URL base del backend para merchandising
 const API_URL = 'http://localhost:5001/api/merchandising';
 
-// Obtener todo el merchandising
+// Obtener el merchandising
 export const getAllMerch = async () => {
   const response = await axios.get(`${API_URL}`);
   return response.data;
@@ -22,7 +22,7 @@ export const getMerchByArtist = async (artistId) => {
   return response.data;
 };
 
-// Crear un nuevo producto de merchandising (cuando haya panel admin)
+// Crear un nuevo producto de merchandising 
 export const createMerch = async (merchData) => {
   const response = await axios.post(`${API_URL}`, merchData);
   return response.data;

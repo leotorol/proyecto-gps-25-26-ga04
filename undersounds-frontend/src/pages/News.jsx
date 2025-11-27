@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Typography, Box } from '@mui/material';
 import { getNewsById } from '../services/newsService';
 import '../styles/newspage.css';
@@ -16,6 +16,7 @@ const News = () => {
         const data = await getNewsById(noticiaId);
         setNoticia(data);
       } catch (err) {
+        console.log('Error fetching news by ID:', err);
         setError('Noticia no encontrada o error en el servidor');
       } finally {
         setLoading(false);

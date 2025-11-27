@@ -1,14 +1,13 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
-import { merchService } from '../services/merchandisingService'; // Servicio real
-import axios from 'axios'; // Asegúrate de importar axios
+import { merchService } from '../services/merchandisingService';
+import axios from 'axios';
 import '../styles/tshirt.css';
 
 const TshirtPage = () => {
   const { id } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
@@ -76,7 +75,7 @@ const TshirtPage = () => {
       const response = await axios.post('http://localhost:5001/create-checkout-session', {
         items: orderSummary.items,
       });
-      window.location.href = response.data.url;
+      globalThis.location.href = response.data.url;
     } catch (error) {
       console.error("Error al iniciar el pago:", error);
       alert("Error al iniciar el pago.");

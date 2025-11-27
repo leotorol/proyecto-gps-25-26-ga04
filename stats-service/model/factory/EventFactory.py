@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from model.models.EventModel import EventModel
 
@@ -9,5 +9,5 @@ class EventFactory:
             try:
                 payload['timestamp'] = datetime.fromisoformat(payload['timestamp'])
             except Exception:
-                payload['timestamp'] = datetime.utcnow()
+                payload['timestamp'] = datetime.now(timezone.utc)
         return EventModel(**payload)

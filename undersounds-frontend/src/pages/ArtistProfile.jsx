@@ -1,24 +1,45 @@
 import React, { useState, useContext, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Typography, Box, Grid, Tab, Tabs } from '@mui/material';
+import { Typography, Box, Tab, Tabs } from '@mui/material';
+import Grid2 from '@mui/material/Grid2';
 import '../styles/artistprofile.css';
 import { AuthContext } from '../context/AuthContext';
 import albumIMG from '../assets/images/albumPortada.jpg';
 import { fetchArtistById } from '../services/artistService';
-import { merchService } from '../services/merchandisingService'; 
+import { merchService } from '../services/merchandisingService';
 import { formatDate } from '../utils/formatters';
 import { statsService } from '../services/statsService';
-import { toggleFollowArtist } from '../services/authService'; 
+import { toggleFollowArtist } from '../services/authService';
+
+const CustomTabPanel = ({ children, value, index }) => {
+  return (
+    <Box
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      aria-labelledby={`simple-tab-${index}`}
+      sx={{ p: 2, height: '87%', margin: 0, pr: 1 }}
+      className="tab-panel"
+    >
+      {value === index && <Box>{children}</Box>}
+    </Box>
+  );
+};
+
+CustomTabPanel.propTypes = {
+  children: PropTypes.node,
+  value: PropTypes.number.isRequired,
+  index: PropTypes.number.isRequired,
+};
 
 const ArtistProfile = () => {
   const { id } = useParams();
-  const numericId = parseInt(id);
+  const numericId = Number.parseInt(id);
   const navigate = useNavigate();
-  // FIX: Extraemos setUser para actualizar el contexto globalmente
   const { user, setUser } = useContext(AuthContext);
-  const [merch, setMerch] = useState([]); 
+  const [merch, setMerch] = useState([]);
 
-  // Estados para la carga del artista, error y tabs
   const [artist, setArtist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,7 +51,6 @@ const ArtistProfile = () => {
   };
 
   useEffect(() => {
-    // Cargar los datos del artista
     fetchArtistById(numericId)
       .then((data) => {
         setArtist(data);
@@ -41,22 +61,20 @@ const ArtistProfile = () => {
         setError(err);
         setLoading(false);
       });
-  }, [numericId]); 
+  }, [numericId]);
 
-  // Efecto para cargar el merch
   useEffect(() => {
     const loadMerch = async () => {
       try {
         const merchData = await merchService.getMerchByArtist(id);
         setMerch(merchData);
-      } catch (error) {
-        console.error('Error fetching merch:', error);
+      } catch (err) {
+        console.error('Error fetching merch:', err);
       }
     };
     loadMerch();
-  }, [id]); 
+  }, [id]);
 
-  // FIX: Inicializar estado usando el objeto user del contexto
   useEffect(() => {
     if (user && artist) {
       const artistIdStr = String(artist.id || artist._id);
@@ -87,37 +105,31 @@ const ArtistProfile = () => {
       return;
     }
 
-    // UI Optimista local
     const prevStatus = isFollowing;
     setIsFollowing(!prevStatus);
 
     const artistIdStr = String(artist.id || artist._id);
 
     try {
-      // 1. Persistir en BD (User Service)
       await toggleFollowArtist(artistIdStr);
-      
-      // 2. FIX: Actualizar contexto globalmente para que sea instantáneo y persistente en la sesión
+
       if (setUser) {
-        setUser(prevUser => {
+        setUser((prevUser) => {
           const currentFollowing = prevUser.following || [];
           let newFollowing;
-          
-          if (!prevStatus) {
-            // Estamos siguiendo: añadir si no existe
-            newFollowing = currentFollowing.includes(artistIdStr) 
-              ? currentFollowing 
-              : [...currentFollowing, artistIdStr];
+
+          if (prevStatus) {
+            newFollowing = currentFollowing.filter((fid) => fid !== artistIdStr);
           } else {
-            // Estamos dejando de seguir: filtrar
-            newFollowing = currentFollowing.filter(id => id !== artistIdStr);
+            newFollowing = currentFollowing.includes(artistIdStr)
+              ? currentFollowing
+              : [...currentFollowing, artistIdStr];
           }
 
           return { ...prevUser, following: newFollowing };
         });
       }
 
-      // 3. Enviar evento de estadísticas (Stats Service) - SOLO SI ES FOLLOW
       if (!prevStatus) {
         await statsService.sendEvent('artist.followed', {
           entityType: 'artist',
@@ -126,43 +138,41 @@ const ArtistProfile = () => {
           metadata: { artistName: artist.name }
         });
       }
-
-    } catch (error) {
-      console.error("Error al seguir artista", error);
-      setIsFollowing(prevStatus); // Revertir UI local si falla
+    } catch (err) {
+      console.error('Error al seguir artista', err);
+      setIsFollowing(prevStatus);
     }
   };
 
-  // Renderizado de álbumes
   const renderAlbums = (albumsArray) => {
     return (
-      <Grid 
-        container 
-        spacing={2} 
-        justifyContent="flex-start" 
+      <Grid2
+        container
+        spacing={2}
+        justifyContent="flex-start"
         className="tab-content"
-        sx={{ 
-          maxHeight: '400px', 
+        sx={{
+          maxHeight: '400px',
           overflowY: 'auto',
           marginBottom: '20px'
         }}
       >
         {albumsArray.map((album) => (
-          <Grid
-            item
+          <Grid2
             key={album.id}
-            xs={6} sm={2} md={3} lg={3}
+            size={{ xs: 6, sm: 2, md: 3, lg: 3 }}
             sx={{ display: 'flex', flexDirection: 'column', position: 'relative' }}
             className="grid-item"
-            // FIX: Pasar el objeto album en el state
-            onClick={() => navigate(`/album/${album.id}`, { 
-              state: { 
-                album: { 
-                  ...album, 
-                  artist: artist.name
-                } 
-              } 
-            })}
+            onClick={() =>
+              navigate(`/album/${album.id}`, {
+                state: {
+                  album: {
+                    ...album,
+                    artist: artist.name
+                  }
+                }
+              })
+            }
             style={{ cursor: 'pointer' }}
           >
             <div className="image-container">
@@ -192,31 +202,29 @@ const ArtistProfile = () => {
             <Typography variant="body2" sx={{ textAlign: 'left' }} className="item-details">
               Precio: ${album.price}
             </Typography>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
     );
   };
 
-  // ...existing code... (renderMerchandise y renderConcerts se mantienen igual)
   const renderMerchandise = (merchandise) => {
     return (
-      <Grid 
-        container 
-        spacing={2} 
-        justifyContent="flex-start" 
+      <Grid2
+        container
+        spacing={2}
+        justifyContent="flex-start"
         className="tab-content"
-        sx={{ 
-          maxHeight: '400px', 
+        sx={{
+          maxHeight: '400px',
           overflowY: 'auto',
           marginBottom: '20px'
         }}
       >
         {merchandise.map((item) => (
-          <Grid
-            item
+          <Grid2
             key={item.id}
-            xs={6} sm={2} md={3} lg={3}
+            size={{ xs: 6, sm: 2, md: 3, lg: 3 }}
             sx={{ display: 'flex', flexDirection: 'column' }}
             className="grid-item"
             onClick={() => handleTshirtClick(item._id)}
@@ -243,43 +251,44 @@ const ArtistProfile = () => {
             <Typography variant="body2" sx={{ textAlign: 'left' }} className="item-details">
               Precio: ${item.price}
             </Typography>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
     );
   };
 
   const renderConcerts = (concerts) => {
     return (
-      <Grid 
-        container 
-        spacing={2} 
-        justifyContent="flex-start" 
+      <Grid2
+        container
+        spacing={2}
+        justifyContent="flex-start"
         className="tab-content"
-        sx={{ 
-          maxHeight: '400px', 
+        sx={{
+          maxHeight: '400px',
           overflowY: 'auto',
           marginBottom: '20px'
         }}
       >
         {concerts.map((concert) => (
-          <Grid
-            item
+          <Grid2
             key={concert.id}
-            xs={6} sm={2} md={3} lg={3}
+            size={{ xs: 6, sm: 2, md: 3, lg: 3 }}
             sx={{ display: 'flex', flexDirection: 'column' }}
             className="grid-item"
             onClick={() => navigate(`/concert/${artist.id}/${concert.id}`, { state: { concert } })}
             style={{ cursor: 'pointer' }}
           >
-            <div style={{
-              width: '100%',
-              paddingTop: '100%',
-              position: 'relative',
-              overflow: 'hidden',
-              borderRadius: '0px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            }}>
+            <div
+              style={{
+                width: '100%',
+                paddingTop: '100%',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '0px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              }}
+            >
               <img
                 src={concert.concertImage}
                 alt={`Concert at ${concert.location}`}
@@ -299,9 +308,9 @@ const ArtistProfile = () => {
             <Typography variant="body2" sx={{ textAlign: 'left' }} className="item-details">
               Fecha: {formatDate(concert.date)}
             </Typography>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
     );
   };
 
@@ -319,7 +328,7 @@ const ArtistProfile = () => {
         padding: '50px',
       }}
     >
-      <Grid
+      <Grid2
         container
         spacing={2}
         justifyContent="center"
@@ -327,18 +336,17 @@ const ArtistProfile = () => {
         sx={{ paddingRight: '300px', paddingLeft: '300px', paddingTop: '150px' }}
         className="container"
       >
-        {/* Panel principal con tabs */}
-        <Grid item xs={12} container sx={{ height: '80%', border: '1px solid black', backgroundColor: 'rgba(255, 255, 255, 0.8)' }}>
-          <Grid item xs={10} sx={{ borderRight: '2px solid black', marginTop: '-15px', paddingBottom: '30px' }}>
+        <Grid2 size={12} container sx={{ height: '80%', border: '1px solid black', backgroundColor: 'rgba(255, 255, 255, 0.8)' }}>
+          <Grid2 size={10} sx={{ borderRight: '2px solid black', marginTop: '-15px', paddingBottom: '30px' }}>
             <Box sx={{ borderBottom: 2, borderColor: 'divider' }}>
               <Tabs
                 value={value}
                 onChange={handleChange}
                 aria-label="artist tabs"
                 sx={{
-                  "& .MuiTab-root": { color: "black" },
-                  "& .Mui-selected": { color: "black", fontWeight: "bold" },
-                  "& .MuiTabs-indicator": { backgroundColor: "black" },
+                  '& .MuiTab-root': { color: 'black' },
+                  '& .Mui-selected': { color: 'black', fontWeight: 'bold' },
+                  '& .MuiTabs-indicator': { backgroundColor: 'black' },
                 }}
               >
                 <Tab label="Álbumes" {...a11yProps(0)} />
@@ -347,31 +355,43 @@ const ArtistProfile = () => {
               </Tabs>
             </Box>
             <CustomTabPanel value={value} index={0}>
-              {artist.albums && artist.albums.length > 0 ? renderAlbums(artist.albums) : <Typography variant="body1">No hay álbumes</Typography>}
+              {artist.albums && artist.albums.length > 0 ? (
+                renderAlbums(artist.albums)
+              ) : (
+                <Typography variant="body1">No hay álbumes</Typography>
+              )}
             </CustomTabPanel>
             <CustomTabPanel value={value} index={1}>
-              {artist.merchandising && artist.merchandising.length > 0 ? renderMerchandise(merch) : <Typography variant="body1">No hay merchandising</Typography>}
+              {artist.merchandising && artist.merchandising.length > 0 ? (
+                renderMerchandise(merch)
+              ) : (
+                <Typography variant="body1">No hay merchandising</Typography>
+              )}
             </CustomTabPanel>
             <CustomTabPanel value={value} index={2}>
-              {artist.concerts && artist.concerts.length > 0 ? renderConcerts(artist.concerts) : <Typography variant="body1">No hay conciertos</Typography>}
+              {artist.concerts && artist.concerts.length > 0 ? (
+                renderConcerts(artist.concerts)
+              ) : (
+                <Typography variant="body1">No hay conciertos</Typography>
+              )}
             </CustomTabPanel>
-            <Typography sx={{ fontSize: '12px', textAlign: 'left', marginLeft:'10px', marginTop:'10px' }} className="artist-name">
+            <Typography sx={{ fontSize: '12px', textAlign: 'left', marginLeft: '10px', marginTop: '10px' }} className="artist-name">
               © 2025 {artist.name}. Todos los derechos reservados.
             </Typography>
-          </Grid>
-          {/* Segunda columna: Perfil del artista */}
-          <Grid item xs={2} sx={{ textAlign: 'center', marginTop: '80px' }}>
+          </Grid2>
+          <Grid2 size={2} sx={{ textAlign: 'center', marginTop: '80px' }}>
             <div className="profile-image-container">
               <img src={artist.profileImage} alt={artist.name} className="profile-image" />
             </div>
-            <Typography sx={{ fontSize: '25px', textAlign: 'left', marginLeft:'10px' }} className="artist-name">
+            <Typography sx={{ fontSize: '25px', textAlign: 'left', marginLeft: '10px' }} className="artist-name">
               {artist.name}
             </Typography>
-            <Typography sx={{ fontSize: '12px', textAlign: 'left', marginLeft:'10px' }} className="artist-name">
+            <Typography sx={{ fontSize: '12px', textAlign: 'left', marginLeft: '10px' }} className="artist-name">
               {artist.ubicacion}
             </Typography>
             <button
               id="btn-seguir"
+              type="button"
               className={`btn-seguir ${isFollowing ? 'siguiendo' : ''}`}
               onClick={handleFollow}
             >
@@ -393,15 +413,23 @@ const ArtistProfile = () => {
             >
               Seguidores: {artist.seguidores}
             </Typography>
-            <Typography variant="h6" sx={{ marginTop: '15px', fontSize: '15px', textAlign: 'justify', boxShadow: '0px 2px 4px rgba(0,0,0,0.1)' }} className="artist-bio">
+            <Typography
+              variant="h6"
+              sx={{ marginTop: '15px', fontSize: '15px', textAlign: 'justify', boxShadow: '0px 2px 4px rgba(0,0,0,0.1)' }}
+              className="artist-bio"
+            >
               {artist.bio}
             </Typography>
             <Typography variant="h6" sx={{ marginTop: '15px', fontSize: '15px', textAlign: 'justify' }} className="artist-bio">
               <a
                 href={artist.socialLinks.instagram}
                 style={{ textDecoration: 'none', color: '#333' }}
-                onMouseEnter={(e) => { e.target.style.textDecoration = 'underline'; }}
-                onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                onMouseEnter={(e) => {
+                  e.target.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.textDecoration = 'none';
+                }}
               >
                 Instagram.
               </a>
@@ -410,8 +438,12 @@ const ArtistProfile = () => {
               <a
                 href={artist.socialLinks.twitter}
                 style={{ textDecoration: 'none', color: '#333' }}
-                onMouseEnter={(e) => { e.target.style.textDecoration = 'underline'; }}
-                onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                onMouseEnter={(e) => {
+                  e.target.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.textDecoration = 'none';
+                }}
               >
                 Twitter.
               </a>
@@ -420,30 +452,19 @@ const ArtistProfile = () => {
               <a
                 href={artist.socialLinks.facebook}
                 style={{ textDecoration: 'none', color: '#333' }}
-                onMouseEnter={(e) => { e.target.style.textDecoration = 'underline'; }}
-                onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                onMouseEnter={(e) => {
+                  e.target.style.textDecoration = 'underline';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.textDecoration = 'none';
+                }}
               >
                 Facebook.
               </a>
             </Typography>
-          </Grid>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-};
-
-const CustomTabPanel = ({ children, value, index }) => {
-  return (
-    <Box
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      sx={{ p: 2, height: '87%', margin: 0, pr: 1 }}
-      className="tab-panel"
-    >
-      {value === index && <Box>{children}</Box>}
+          </Grid2>
+        </Grid2>
+      </Grid2>
     </Box>
   );
 };

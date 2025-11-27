@@ -3,6 +3,11 @@ from bson import ObjectId
 from config.db import get_db
 import datetime
 
+EVENT_TYPE_FIELD = "$eventType"
+METADATA_PRICE_FIELD = "$metadata.price"
+COND = "$cond"
+EQ = "$eq"
+
 def _sanitize_doc(doc: dict) -> dict:
     """Elimina operadores MongoDB maliciosos de un documento."""
     if not isinstance(doc, dict):
@@ -18,6 +23,9 @@ def _sanitize_doc(doc: dict) -> dict:
         else:
             clean[k] = v
     return clean
+
+def _cond_eq_event(event_name: str, true_value=1, false_value=0):
+    return {COND: [{EQ: [EVENT_TYPE_FIELD, event_name]}, true_value, false_value]}
 
 class EventDAO:
     COLLECTION = "events"
@@ -58,15 +66,16 @@ class EventDAO:
                 match["timestamp"]["$gte"] = start
             if end:
                 match["timestamp"]["$lte"] = end
+
         pipeline = [
             {"$match": match},
             {"$group": {
                 "_id": None,
-                "plays": {"$sum": {"$cond": [{"$eq": ["$eventType", "track.played"]}, 1, 0]}},
-                "likes": {"$sum": {"$cond": [{"$eq": ["$eventType", "track.liked"]}, 1, 0]}},
-                "follows": {"$sum": {"$cond": [{"$eq": ["$eventType", "artist.followed"]}, 1, 0]}},
-                "purchases": {"$sum": {"$cond": [{"$eq": ["$eventType", "order.paid"]}, 1, 0]}},
-                "revenue": {"$sum": {"$cond":[{"$eq":["$eventType","order.paid"]},"$metadata.price",0]}}
+                "plays": {"$sum": _cond_eq_event("track.played")},
+                "likes": {"$sum": _cond_eq_event("track.liked")},
+                "follows": {"$sum": _cond_eq_event("artist.followed")},
+                "purchases": {"$sum": _cond_eq_event("order.paid")},
+                "revenue": {"$sum": {COND: [{EQ: [EVENT_TYPE_FIELD, "order.paid"]}, METADATA_PRICE_FIELD, 0]}}
             }}
         ]
         rows = await db[EventDAO.COLLECTION].aggregate(pipeline).to_list(length=1)

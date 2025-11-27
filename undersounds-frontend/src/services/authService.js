@@ -16,7 +16,7 @@ axios.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => { throw error; }
 );
 
 // Interceptor para refrescar el access token usando la cookie del refresh token
@@ -25,11 +25,11 @@ axios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (
-      originalRequest.url.includes('/refresh-token') ||
-      originalRequest.url.includes('/login') ||
-      originalRequest.url.includes('/register')
+      originalRequest?.url?.includes('/refresh-token') ||
+      originalRequest?.url?.includes('/login') ||
+      originalRequest?.url?.includes('/register')
     ) {
-      return Promise.reject(error);
+      throw error;
     }
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -40,10 +40,11 @@ axios.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
         return axios(originalRequest);
       } catch (refreshError) {
-        return Promise.reject(refreshError);
+        console.error('Token refresh failed:', refreshError);
+        throw refreshError;
       }
     }
-    return Promise.reject(error);
+    throw error;
   }
 );
 
@@ -53,9 +54,9 @@ export const login = async (email, password, remember) => {
     `${API_URL}/login`,
     { email, password, remember }
   );
- const { accessToken: at } = response.data;
+  const { accessToken: at } = response.data;
   accessToken = at;
- return response.data;
+  return response.data;
 };
 
 export const register = async (formData) => {
@@ -87,9 +88,8 @@ export const refreshToken = async () => {
 };
 
 export const oauthLogin = () => {
-  window.location.href = `${API_URL}/google`;
+  globalThis.location.href = `${API_URL}/google`;
 };
-
 
 export const forgotPassword = async (email) => {
   const response = await axios.post(`${API_URL}/forgot-password`, { email });
@@ -102,21 +102,13 @@ export const resetPassword = async (email, otp, newPassword, otpToken) => {
 };
 
 export const toggleFollowArtist = async (artistId) => {
-  try {
-    const response = await axios.post(`${API_URL}/toggle-follow`, { artistId });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/toggle-follow`, { artistId });
+  return response.data;
 };
 
 export const toggleLikeTrack = async (trackId) => {
-  try {
-    const response = await axios.post(`${API_URL}/toggle-like`, { trackId });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/toggle-like`, { trackId });
+  return response.data;
 };
 
 export const authService = { login, register, logout, updateUserProfile, refreshToken, oauthLogin, forgotPassword, resetPassword, toggleFollowArtist, toggleLikeTrack };

@@ -1,4 +1,4 @@
-module.exports = (req, res, next) => {
+const verifyServiceKey = (req, res, next) => {
   const key = req.header('x-service-api-key') || req.query['_service_key'] || req.body._service_key;
   const expected = process.env.SERVICE_API_KEY;
   if (!expected) {
@@ -10,3 +10,5 @@ module.exports = (req, res, next) => {
   }
   next();
 };
+
+module.exports = verifyServiceKey;

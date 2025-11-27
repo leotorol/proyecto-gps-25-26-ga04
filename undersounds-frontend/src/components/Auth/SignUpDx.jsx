@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Divider, Typography } from '@mui/material';
+import PropTypes from 'prop-types';
+import { Dialog, DialogTitle, DialogContent, Button, Grid2, Divider, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { RegisterContext } from '../../context/RegisterContext';
 import signupFan from '../../assets/images/icon-fans.svg';
@@ -22,11 +23,13 @@ const SignUpDialog = ({ open, handleClose }) => {
       onClose={handleClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{
-        sx: {
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: 'calc(100vh - 32px)'
+      slotProps={{
+        paper: {
+          sx: {
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: 'calc(100vh - 32px)'
+          }
         }
       }}
     >
@@ -42,17 +45,17 @@ const SignUpDialog = ({ open, handleClose }) => {
         Crea tu cuenta de Undersounds
       </DialogTitle>
       <DialogContent sx={{ flex: '1 1 auto', p: 2 }}>
-        <Grid container spacing={2} sx={{ backgroundColor: '#FFFFFF', p: 2 }}>
-          <Grid item xs={12}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
+        <Grid2 container spacing={2} sx={{ backgroundColor: '#FFFFFF', p: 2 }}>
+          <Grid2 size={12}>
+            <Grid2 container spacing={2}>
+              <Grid2 size={6}>
                 <img 
                   src={signupFan} 
                   alt="SignUp Fan Logo" 
-                  style={{ height: '140px', borderRadius: '8px' }} // se reduce la altura si es necesario
+                  style={{ height: '140px', borderRadius: '8px' }}
                 />
-              </Grid>
-              <Grid item xs={6}>
+              </Grid2>
+              <Grid2 size={6}>
                 <Button 
                   sx={{ 
                     mt: 2, 
@@ -72,20 +75,20 @@ const SignUpDialog = ({ open, handleClose }) => {
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   Regístrate como fan para seguir a tus artistas favoritos y descubrir nueva música.
                 </Typography>
-              </Grid>
-            </Grid>
-          </Grid>
+              </Grid2>
+            </Grid2>
+          </Grid2>
           <Divider sx={{ width: '100%', my: 2, backgroundColor: 'grey' }} />
-          <Grid item xs={12}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
+          <Grid2 size={12}>
+            <Grid2 container spacing={2}>
+              <Grid2 size={6}>
                 <img 
                   src={signupBand}
                   alt="SignUp Band Logo" 
                   style={{ height: '140px', borderRadius: '8px' }} 
                 />
-              </Grid>
-              <Grid item xs={6}>
+              </Grid2>
+              <Grid2 size={6}>
                 <Button 
                   sx={{ 
                     mt: 2, 
@@ -106,20 +109,20 @@ const SignUpDialog = ({ open, handleClose }) => {
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   Regístrate como banda para compartir tu música y conectar con tus fans.
                 </Typography>
-              </Grid>
-            </Grid>
-          </Grid>
+              </Grid2>
+            </Grid2>
+          </Grid2>
           <Divider sx={{ width: '100%', my: 2, backgroundColor: 'grey' }} />
-          <Grid item xs={12}>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
+          <Grid2 size={12}>
+            <Grid2 container spacing={2}>
+              <Grid2 size={6}>
                 <img 
                   src={signupLabel} 
                   alt="SignUp Label Logo" 
                   style={{ height: '140px', borderRadius: '8px' }} 
                 />
-              </Grid>
-              <Grid item xs={6}>
+              </Grid2>
+              <Grid2 size={6}>
                 <Button 
                   sx={{ 
                     mt: 2, 
@@ -140,13 +143,18 @@ const SignUpDialog = ({ open, handleClose }) => {
                 <Typography variant="body2" sx={{ mt: 1 }}>
                   Regístrate como sello discográfico para gestionar tus artistas y lanzamientos.
                 </Typography>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
+              </Grid2>
+            </Grid2>
+          </Grid2>
+        </Grid2>
       </DialogContent>
     </Dialog>
   );
+};
+
+SignUpDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  handleClose: PropTypes.func.isRequired,
 };
 
 export default SignUpDialog;

@@ -67,7 +67,7 @@ const AudioPlayer = () => {
 
   // Actualizar la fuente del audio al cambiar la pista
   useEffect(() => {
-    if (currentTrack && currentTrack.url) {
+    if (currentTrack?.url) {
       audioRef.current.src = currentTrack.url;
       setProgress(0);
     }
@@ -106,7 +106,7 @@ const AudioPlayer = () => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // --- LÓGICA DE LIKES (CORREGIDA) ---
+  // --- LÓGICA DE LIKES ---
   useEffect(() => {
     const uniqueId = getUniqueTrackId(currentTrack);
     if (!uniqueId || !user) { 
@@ -139,12 +139,12 @@ const AudioPlayer = () => {
           const currentLikes = prevUser.likedTracks || [];
           let newLikes;
           
-          if (!prevLiked) {
-            // Añadir si no existe
-            newLikes = currentLikes.includes(uniqueId) ? currentLikes : [...currentLikes, uniqueId];
-          } else {
-            // Quitar
+          if (prevLiked) {
+            // Quitar like
             newLikes = currentLikes.filter(id => id !== uniqueId);
+          } else {
+            // Añadir like
+            newLikes = currentLikes.includes(uniqueId) ? currentLikes : [...currentLikes, uniqueId];
           }
           return { ...prevUser, likedTracks: newLikes };
         });

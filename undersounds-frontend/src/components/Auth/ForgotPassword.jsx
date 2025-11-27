@@ -16,19 +16,20 @@ import jwtDecode from 'jwt-decode';
 function ForgotPassword({ open, handleClose }) {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
-  const [otpValues, setOtpValues] = useState(Array(6).fill(''));
+  const [otpValues, setOtpValues] = useState(new Array(6).fill(''));
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otpToken, setOtpToken] = useState('');
   const [message, setMessage] = useState('');
   const inputRefs = useRef([]);
+  const otpIds = useRef(Array.from({ length: 6 }, () => `otp-${Math.random().toString(36).slice(2, 9)}`));
 
   // Efecto que reinicia estados cuando se cierra el diálogo
   useEffect(() => {
     if (!open) {
       setStep(1);
       setEmail('');
-      setOtpValues(Array(6).fill(''));
+      setOtpValues(new Array(6).fill(''));
       setNewPassword('');
       setConfirmPassword('');
       setMessage('');
@@ -40,12 +41,13 @@ function ForgotPassword({ open, handleClose }) {
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     try {
-      const { message, otpToken } = await authService.forgotPassword(email);
-      setMessage(message);
-      setOtpToken(otpToken);
+      const { message: srvMessage, otpToken: token } = await authService.forgotPassword(email);
+      setMessage(srvMessage);
+      setOtpToken(token);
       setStep(2);
     } catch (error) {
-      setMessage(error.response?.data.error || 'Error al solicitar OTP');
+      console.error('forgotPassword error:', error);
+      setMessage(error?.response?.data?.error || 'Error al solicitar OTP');
     }
   };
 
@@ -62,6 +64,7 @@ function ForgotPassword({ open, handleClose }) {
         setMessage('El código OTP ingresado es incorrecto');
       }
     } catch (error) {
+      console.error('verifyOtp error:', error);
       setMessage('Error al verificar el OTP');
     }
   };
@@ -74,14 +77,14 @@ function ForgotPassword({ open, handleClose }) {
     nuevoOtp[index] = value;
     setOtpValues(nuevoOtp);
     if (value && index < 5) {
-      inputRefs.current[index + 1].focus();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
   // Permite borrar con retroceso
   const handleOtpKeyDown = (e, index) => {
     if (e.key === 'Backspace' && otpValues[index] === '' && index > 0) {
-      inputRefs.current[index - 1].focus();
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
@@ -101,16 +104,23 @@ function ForgotPassword({ open, handleClose }) {
         // Reinicia estados luego de cerrar el diálogo
         setStep(1);
         setEmail('');
-        setOtpValues(Array(6).fill(''));
+        setOtpValues(new Array(6).fill(''));
         setNewPassword('');
         setConfirmPassword('');
         setMessage('');
         setOtpToken('');
       }, 750);
     } catch (error) {
-      setMessage(error.response?.data.error || 'Error al restablecer la contraseña');
+      console.error('resetPassword error:', error);
+      setMessage(error?.response?.data?.error || 'Error al restablecer la contraseña');
     }
   };
+
+  // Evita ternario anidado inline: asignar handler explícitamente
+  let onSubmitHandler;
+  if (step === 1) onSubmitHandler = handleRequestOtp;
+  else if (step === 2) onSubmitHandler = handleVerifyOtp;
+  else onSubmitHandler = handleResetPassword;
 
   return (
     <Dialog
@@ -119,10 +129,7 @@ function ForgotPassword({ open, handleClose }) {
       slotProps={{
         paper: {
           component: 'form',
-          onSubmit:
-            step === 1 ? handleRequestOtp :
-            step === 2 ? handleVerifyOtp :
-            handleResetPassword,
+          onSubmit: onSubmitHandler,
           sx: { backgroundImage: 'none' }
         }
       }}
@@ -161,7 +168,7 @@ function ForgotPassword({ open, handleClose }) {
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
               {otpValues.map((value, index) => (
                 <OutlinedInput
-                  key={index}
+                  key={otpIds.current[index]}
                   inputProps={{
                     maxLength: 1,
                     style: { textAlign: 'center', fontSize: '20px', width: '40px' }

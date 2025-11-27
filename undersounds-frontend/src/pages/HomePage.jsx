@@ -1,8 +1,9 @@
 import React, { useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/homePage.css';
-import { Link, useNavigate } from 'react-router-dom';
-import { Grid, Typography, Box, Card, CardContent, CardMedia, CardActionArea } from '@mui/material';
+import { Link } from 'react-router-dom';
+import Grid2 from '@mui/material/Grid2';
+import { Typography, Box, Card, CardContent, CardMedia, CardActionArea } from '@mui/material';
 import { getNews } from '../services/newsService';
 import { AlbumContext } from '../context/AlbumContext';
 import { AuthContext } from '../context/AuthContext';
@@ -13,7 +14,6 @@ const HomePage = () => {
   const [news, setNews] = useState([]);
   const [albums, setAlbums] = useState([]);
   const [artists, setArtists] = useState([]);
-  const navigate = useNavigate();
   const { setSelectedAlbumId } = useContext(AlbumContext);
   const { user } = useContext(AuthContext);
 
@@ -51,43 +51,38 @@ const HomePage = () => {
     loadArtists();
   }, []);
 
-  // Desestructuramos las tres primeras noticias (fallback vacío)
   const noticia = news[0] || {};
   const noticia2 = news[1] || {};
   const noticia3 = news[2] || {};
 
-  const handleAlbumClick = (album) => {
-    setSelectedAlbumId(album.id);
-    navigate(`/album/${album.id}`, { state: { album } });
-  };
-
   const [startIndex, setStartIndex] = useState(0);
   const [startIndexNew, setStartIndexNew] = useState(0);
   const [startIndexArt, setStartIndexArt] = useState(0);
-  const itemsPerPage = 4;
 
-  // Función auxiliar para determinar el nombre del artista
   const getArtistName = (album) => {
-    // Si el campo artist es una cadena o un objeto con propiedad name, se utiliza
     if (typeof album.artist === 'string') {
       return album.artist;
     }
     if (album.artist && typeof album.artist === 'object' && album.artist.name) {
       return album.artist.name;
     }
+    return 'Desconocido';
   };
 
-  // Función para renderizar cada álbum
   const renderAlbumItem = (album) => (
-    <div key={album.id} onClick={() => handleAlbumClick(album)} style={{ flex: '0 0 calc(25%)', cursor: 'pointer' }}>
+    <div key={album.id} style={{ flex: '0 0 calc(25%)' }}>
       <Card className="item" sx={{ maxWidth: 310 }}>
-        <CardMedia
-          component="img"
-          alt={`${album.title} cover`}
-          image={album.coverImage}
-          sx={{ aspectRatio: '1 / 1', padding: '15px' }}
-        />
-        <CardActionArea>
+        <CardActionArea
+          component={Link}
+          to={`/album/${album.id}`}
+          onClick={() => setSelectedAlbumId(album.id)}
+        >
+          <CardMedia
+            component="img"
+            alt={`${album.title} cover`}
+            image={album.coverImage}
+            sx={{ aspectRatio: '1 / 1', padding: '15px' }}
+          />
           <CardContent>
             <Typography gutterBottom variant="h5" component="div">
               {album.title}
@@ -107,7 +102,7 @@ const HomePage = () => {
   return (
     <div>
       {/* Sección de noticias */}
-      <Grid
+      <Grid2
         container
         sx={{
           marginTop: 0,
@@ -116,7 +111,7 @@ const HomePage = () => {
         }}
         justifyContent="center"
       >
-        <Grid item xs={12} md={8} textAlign="center" sx={{ mt: 0, maxHeight: '550px' }}>
+        <Grid2 size={{ xs: 12, md: 8 }} textAlign="center" sx={{ mt: 0, maxHeight: '550px' }}>
           <Link to={`news/${noticia.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
             <Box
               sx={{
@@ -159,12 +154,10 @@ const HomePage = () => {
               </Typography>
             </Box>
           </Link>
-        </Grid>
+        </Grid2>
 
-        <Grid
-          item
-          xs={12}
-          md={4}
+        <Grid2
+          size={{ xs: 12, md: 4 }}
           sx={{
             mt: 0,
             display: 'flex',
@@ -173,8 +166,7 @@ const HomePage = () => {
           }}
         >
           <Link to={`/news/${noticia2.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Grid
-              container
+            <Box
               sx={{
                 flex: 1,
                 display: 'flex',
@@ -211,11 +203,10 @@ const HomePage = () => {
               >
                 {noticia2.titulo}
               </Typography>
-            </Grid>
+            </Box>
           </Link>
           <Link to={`/news/${noticia3.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Grid
-              container
+            <Box
               sx={{
                 flex: 1,
                 display: 'flex',
@@ -253,11 +244,19 @@ const HomePage = () => {
               >
                 {noticia3.titulo}
               </Typography>
-            </Grid>
+            </Box>
           </Link>
-        </Grid>
-      </Grid>
-      {/* Sección de Álbumes Recomendados H14.2 Mostrar tendencias en UI*/}
+        </Grid2>
+      </Grid2>
+
+      {/*TRENDING */}
+      <Box className="envoltorio">
+        <div className="featured-section">
+          <TrendingSection />
+        </div>
+      </Box>
+
+      {/* Sección de Álbumes Recomendados */}
       <Box className="envoltorio">
         <div className="featured-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', color: 'black' }}>
@@ -338,65 +337,64 @@ const HomePage = () => {
           </div>
         </div>
       </Box>
-{/* Sección de Artistas */}
-<Box className="envoltorio">
-  <div className="featured-section">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', color: 'black' }}>
-      <h2>Descubre a nuestros artistas</h2>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button className="boton-carrusel" onClick={() => setStartIndexArt(Math.max(0, startIndexArt - 3))}>
-          {"<"}
-        </button>
-        <button className="boton-carrusel" onClick={() => setStartIndexArt(Math.min(artists.length - 4, startIndexArt + 3))}>
-          {">"}
-        </button>
-      </div>
-    </div>
 
-    <div style={{ overflow: 'hidden', width: '100%' }}>
-      <div 
-        className="album-list" 
-        style={{
-          display: 'flex',
-          gap: '10px',
-          transform: `translateX(-${(startIndexArt * 100) / 4}%)`,
-          transition: 'transform 0.5s ease-in-out'
-        }}
-      >
-        {artists.map((artist) => (
-          <div key={artist.id} style={{ flex: '0 0 calc(25%)', cursor: 'pointer' }}>
-            <Link to={`/artistProfile/${artist.id}`} style={{ textDecoration: 'none' }}>
-              <Card className="item" sx={{ maxWidth: 310 }}>
-                <CardMedia
-                  component="img"
-                  image={artist.profileImage || '/assets/default-profile.jpg'}
-                  alt={`${artist.name} profile`}
-                  sx={{ aspectRatio: '1 / 1', padding: '15px' }}
-                />
-                <CardActionArea>
-                  <CardContent>
-                    <Typography gutterBottom variant="h5" component="div">
-                      {artist.name}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Género: {artist.genre}
-                    </Typography>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
+      {/* Sección de Artistas */}
+      <Box className="envoltorio">
+        <div className="featured-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', color: 'black' }}>
+            <h2>Descubre a nuestros artistas</h2>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="boton-carrusel" onClick={() => setStartIndexArt(Math.max(0, startIndexArt - 3))}>
+                {"<"}
+              </button>
+              <button className="boton-carrusel" onClick={() => setStartIndexArt(Math.min(artists.length - 4, startIndexArt + 3))}>
+                {">"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ overflow: 'hidden', width: '100%' }}>
+            <div
+              className="album-list"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                transform: `translateX(-${(startIndexArt * 100) / 4}%)`,
+                transition: 'transform 0.5s ease-in-out'
+              }}
+            >
+              {artists.map((artist) => (
+                <div key={artist.id} style={{ flex: '0 0 calc(25%)' }}>
+                  <Card className="item" sx={{ maxWidth: 310 }}>
+                    <CardActionArea component={Link} to={`/artistProfile/${artist.id}`}>
+                      <CardMedia
+                        component="img"
+                        image={artist.profileImage || '/assets/default-profile.jpg'}
+                        alt={`${artist.name} profile`}
+                        sx={{ aspectRatio: '1 / 1', padding: '15px' }}
+                      />
+                      <CardContent>
+                        <Typography gutterBottom variant="h5" component="div">
+                          {artist.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          Género: {artist.genre}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0px' }}>
+            <Link to="/discover" style={{ textDecoration: 'underline', color: '#0066cc', marginTop: '1%' }}>
+              <h6>Ver más</h6>
             </Link>
           </div>
-        ))}
-      </div>
-    </div>
-
-    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '0px' }}>
-      <Link to="/discover" style={{ textDecoration: 'underline', color: '#0066cc', marginTop: '1%' }}>
-        <h6>Ver más</h6>
-      </Link>
-    </div>
-  </div>
-</Box>
+        </div>
+      </Box>
 
       {/* Sección para invitación a registrarse si no hay usuario */}
       {!user && (

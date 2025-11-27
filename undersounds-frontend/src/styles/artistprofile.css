@@ -166,7 +166,7 @@ box-shadow: 0 6px 16px rgba(117, 105, 105, 0.9); /* Aumenta la sombra para un ef
   padding: 10px 10px;
   font-size: 16px;
   background-color: #4a91e255; /* Color inicial */
-  color: white;
+  color: rgb(0, 0, 0);
   border: 2px solid #4A90E2; /* Borde azul */
   border-radius: 5px;
   cursor: pointer;
@@ -180,7 +180,7 @@ box-shadow: 0 6px 16px rgba(117, 105, 105, 0.9); /* Aumenta la sombra para un ef
 
 .siguiendo {
   background-color: #4A90E2; /* Azul al estar en "siguiendo" */
-  color: white; /* Letras blancas */
+  color: rgb(0, 0, 0); /* Letras blancas */
   border: 2px solid #4A90E2; /* Mismo color azul para el borde */
 }
 

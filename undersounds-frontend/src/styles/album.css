@@ -74,7 +74,7 @@
 
   .tag {
     background-color: #1DA0C3; /* Fondo azul */
-    color: white;           /* Texto blanco */
+    color: #000000;         /* Texto negro para mejorar contraste */
     padding: 2px 6px;      /* Espaciado dentro de la cajita */
     border-radius: 10px;    /* Bordes redondeados */
     display: inline-block;  /* Para que se ajuste al contenido */

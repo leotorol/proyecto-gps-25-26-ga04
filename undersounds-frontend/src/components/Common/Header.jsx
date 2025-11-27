@@ -71,19 +71,18 @@ const Header = () => {
       if (filter === 'all' || filter === 'tracks') {
         // Se utilizan los álbumes para extraer las pistas, agregando albumId y albumCover
         const albums = await fetchAlbums();
-        let tracksList = [];
-        albums.forEach(album => {
-          if (Array.isArray(album.tracks)) {
-            const matchingTracks = album.tracks.filter(track =>
-              (track.title || '').toLowerCase().includes(lowerQuery)
-            ).map(track => ({
+        const tracksList = [];
+        for (const album of albums) {
+          if (!Array.isArray(album.tracks)) continue;
+          const matchingTracks = album.tracks
+            .filter(track => (track.title || '').toLowerCase().includes(lowerQuery))
+            .map(track => ({
               ...track,
               albumId: album.id,
               albumCover: album.coverImage
             }));
-            tracksList = tracksList.concat(matchingTracks);
-          }
-        });
+          tracksList.push(...matchingTracks);
+        }
         filteredResults = filteredResults.concat(
           tracksList.map(item => ({ type: 'track', data: item }))
         );
@@ -130,12 +129,6 @@ const Header = () => {
 
   const handleDropdownMouseLeave = () => {
     setShowDropdown(false);
-  };
-
-  const onClickAlbumResult = (album) => {
-    // navegar con el objeto album en state para evitar que AlbumPage quede sin datos
-    setShowDropdown(false);
-    navigate(`/album/${album.id}`, { state: { album } });
   };
 
   const onClickTrackResult = async (track) => {

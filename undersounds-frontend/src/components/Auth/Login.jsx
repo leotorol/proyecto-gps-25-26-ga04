@@ -141,6 +141,7 @@ export default function Login(props) {
       setUser(account);
       navigate('/');
     } catch (err) {
+      console.error('Login error:', err);
       setErrorMessage('Su email o contraseña no es válido');
     }
   };

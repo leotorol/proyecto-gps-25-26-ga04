@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('./logger');
 
 /**
  * HTTP request con retry automático
@@ -16,7 +17,6 @@ async function withRetry(requestFn, maxRetries = 3, baseDelay = 1000) {
     } catch (err) {
       lastError = err;
       
-      // Solo retry en errores transitorios
       const isRetryable = 
         err.code === 'ECONNREFUSED' ||
         err.code === 'ETIMEDOUT' ||
@@ -27,9 +27,8 @@ async function withRetry(requestFn, maxRetries = 3, baseDelay = 1000) {
         throw err;
       }
       
-      // Backoff exponencial: 1s, 2s, 4s...
       const delay = baseDelay * Math.pow(2, attempt - 1);
-      console.warn(`HTTP retry ${attempt}/${maxRetries} after ${delay}ms:`, err.message);
+      logger.warn({ attempt, maxRetries, delay, error: err.message }, 'HTTP retry');
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }

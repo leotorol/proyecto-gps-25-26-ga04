@@ -21,11 +21,11 @@ class MerchDTO {
         }
     
         if (typeof this.price !== 'number') {
-            throw new Error("El precio debe ser un número.");
+            throw new TypeError("El precio debe ser un número.");
         }
     
         if (![0, 1, 2, 3, 4].includes(this.type)) {
-            throw new Error("El tipo de merchandising es inválido. (0 = vinilo, 1 = CD, 2 = camiseta)");
+            throw new TypeError("El tipo de merchandising es inválido. (0 = vinilo, 1 = CD, 2 = camiseta)");
         }
     }
 }

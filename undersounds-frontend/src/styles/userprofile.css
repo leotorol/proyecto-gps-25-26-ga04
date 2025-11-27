@@ -36,20 +36,19 @@
     color: #666;
   }
   
-  /* Banner que se extiende de extremo a extremo */
-  .profile-banner {
+.profile-banner {
     width: 100vw;
     margin-left: calc(-50vw + 50%);
-    /* Removed negative margin-top so it doesn't get pulled upward */
+    margin-top: -20px;  /* Ajusta este valor para subir el banner */
     height: 200px;
-    background-color: #007bff;  /* Or your preferred color */
+    background-color: #f1e7db;  /* Color natural para el banner */
     position: relative;
-    margin-bottom: 20px;  /* Adjust spacing as needed */
+    margin-bottom: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  
+
   /* Botón para cambiar el banner */
   .profile-banner button {
     position: absolute;
@@ -72,7 +71,7 @@
   .update-button {
     padding: 10px 20px;
     background-color: #007bff;
-    color: #ffffff;
+    color: #000000;
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -160,18 +159,6 @@
     border-color: #1da0c3;
     box-shadow: 0 0 5px rgba(29, 160, 195, 0.5);
 }
-.profile-banner {
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    margin-top: -20px;  /* Ajusta este valor para subir el banner */
-    height: 200px;
-    background-color: #f1e7db;  /* Color natural para el banner */
-    position: relative;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
 
   .profile-banner img {
     width: 100%;

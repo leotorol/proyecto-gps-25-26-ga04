@@ -67,7 +67,7 @@
 /* Nuevo estilo para el botón de compra */
 .buy-button {
     background-color: #1da0c3;
-    color: white;
+    color: rgb(0, 0, 0);
     border: none;
     padding: 15px 30px;
     cursor: pointer;
@@ -95,7 +95,7 @@
 
 .buy-button.buy-now {
     background-color: #1da0c3;
-    color: white;
+    color: rgb(0, 0, 0);
     border: none;
 }
 

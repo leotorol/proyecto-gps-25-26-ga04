@@ -1,13 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from pathlib import Path
 from dotenv import load_dotenv
-import os, json, subprocess, sys, inspect, asyncio, threading, yaml, uvicorn, signal 
-from datetime import datetime
+import os, json, subprocess, sys, inspect, asyncio, yaml, uvicorn, signal 
+from datetime import datetime, timezone
 import psutil
+
+# Logger
+from utils.logger import get_logger
+logger = get_logger("server")
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(str(BASE_DIR / ".env"))
@@ -27,20 +32,29 @@ import config.db as db_module
 CONNECT_FN = getattr(db_module, "connect_to_mongo", None)
 CLOSE_FN = getattr(db_module, "close_mongo", None)
 
-
 CONFIG_DIR = BASE_DIR / "config"
 SHARED_META = CONFIG_DIR / "dbmeta.json"
 LOCAL_META = CONFIG_DIR / "dbmeta_local.json"
-IMPORT_SCRIPT = BASE_DIR / "import-db.js"
-EXPORT_SCRIPT = BASE_DIR / "export-db.js"
+IMPORT_SCRIPT = BASE_DIR / "import-db.mjs"
+EXPORT_SCRIPT = BASE_DIR / "export-db.mjs"
 
 app = FastAPI(title="UnderSounds — Stats Service", docs_url=None, redoc_url=None, openapi_url=None)
+
+# Gzip to optimize response size
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Attach limiter to app state and add exception handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Cargar especificación OpenAPI desde docs/Estadisticas.yaml y usarla como esquema OpenAPI
+# Middleware para loguear requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info("request_started", method=request.method, path=request.url.path)
+    response = await call_next(request)
+    logger.info("request_completed", method=request.method, path=request.url.path, status=response.status_code)
+    return response
+
 OPENAPI_YAML = BASE_DIR / "docs" / "Estadisticas.yaml"
 if OPENAPI_YAML.exists():
     try:
@@ -49,9 +63,9 @@ if OPENAPI_YAML.exists():
         def _custom_openapi():
             return openapi_schema
         app.openapi = _custom_openapi
-        print(f"OpenAPI cargada desde {OPENAPI_YAML}")
+        logger.info("openapi_loaded", path=str(OPENAPI_YAML))
     except Exception as e:
-        print("Error cargando OpenAPI YAML:", e)
+        logger.error("openapi_load_failed", error=str(e))
 
 # CORS
 raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000")
@@ -91,9 +105,9 @@ def update_version_file(path: Path, new_version: int, collections=None):
         if collections is not None:
             meta["colecciones"] = collections
         path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-        print(f"{path} actualizado a la versión {new_version}")
+        logger.info("meta_updated", path=str(path), version=new_version)
     except Exception as e:
-        print("Error actualizando meta:", e)
+        logger.error("meta_update_failed", error=str(e))
 
 def run_node_script(script_path: Path, interactive: bool = False) -> subprocess.CompletedProcess:
     if not script_path.exists():
@@ -125,17 +139,14 @@ def prompt_and_export():
         answer = "N"
         
     if answer == "S":
-        print("Iniciando export-db.js (Interactivo)...")
+        logger.info("export_started")
         try:
             # Llamada interactiva: el control pasa al script de Node
             proc = run_node_script(EXPORT_SCRIPT, interactive=True)
-            
             if proc.returncode != 0:
-                print("export-db.js terminó con errores.")
+                logger.error("export_failed")
             else:
-                print("Exportación finalizada correctamente.")
-                
-                # Actualizar metadatos (versión) después del éxito
+                logger.info("export_completed")
                 shared_meta = {}
                 try:
                     if SHARED_META.exists():
@@ -149,11 +160,11 @@ def prompt_and_export():
                 update_version_file(LOCAL_META, new_version, current_collections)
                 
         except Exception as e:
-            print("Error ejecutando export script:", e)
+            logger.error("export_error", error=str(e))
     else:
-        print("No se realizará el respaldo de datos.")
+        logger.info("export_skipped")
     
-    print("Saliendo.")
+    logger.info("shutting_down")
     sys.exit(0)
 
 async def _call_maybe_async(fn, *args, **kwargs):
@@ -169,27 +180,34 @@ async def _call_maybe_async(fn, *args, **kwargs):
 async def startup_event():
     try:
         await _call_maybe_async(CONNECT_FN)
-        print("DB connection initialized")
+        logger.info("db_connected")
     except Exception as e:
-        print("Error connecting DB on startup:", e)
+        logger.error("db_connection_failed", error=str(e))
 
     # run import-db.js if local meta version outdated
     shared_v = read_db_version(SHARED_META)
     local_v = read_db_version(LOCAL_META)
     if local_v < shared_v:
         try:
-            print("Local DB version outdated, running import-db.js ...")
+            logger.info("import_started", reason="version_outdated")
             result = run_node_script(IMPORT_SCRIPT)
             if result.returncode != 0:
-                print("import-db.js failed:", result.stderr)
+                logger.error("import_failed", stderr=result.stderr)
             else:
-                print("import-db.js completed:", result.stdout)
+                logger.info("import_completed")
                 LOCAL_META.write_text(SHARED_META.read_text(encoding="utf-8"), encoding="utf-8")
         except Exception as e:
-            print("Error running import script:", e)
+            logger.error("import_error", error=str(e))
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    logger.info("graceful_shutdown_started")
+    try:
+        await _call_maybe_async(CLOSE_FN)
+        logger.info("db_closed")
+    except Exception as e:
+        logger.error("db_close_failed", error=str(e))
+
     """Graceful shutdown: cerrar recursos limpiamente."""
     print("Iniciando graceful shutdown...")
     
@@ -205,12 +223,11 @@ async def shutdown_event():
         from controller.ArtistKPIController import _cache, _cache_locks
         _cache.clear()
         _cache_locks.clear()
-        print("Cache cleared")
+        logger.info("cache_cleared")
     except Exception as e:
-        print(f"Error clearing cache: {e}")
+        logger.error("cache_clear_failed", error=str(e))
     
-    print("Graceful shutdown completado.")
-
+    logger.info("graceful_shutdown_completed")
 
 @app.get("/healthz")
 async def healthz():
@@ -225,7 +242,7 @@ async def healthz():
     health = {
         "status": "ok",
         "service": "stats-service",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {}
     }
     
@@ -309,6 +326,8 @@ async def root():
 if __name__ == "__main__":
     port = int(os.getenv("PORT"))
     host = os.getenv("HOST")
+    
+    logger.info("starting_server", host=host, port=port)
     
     # Graceful shutdown timeout (segundos para esperar requests activas)
     SHUTDOWN_TIMEOUT = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))

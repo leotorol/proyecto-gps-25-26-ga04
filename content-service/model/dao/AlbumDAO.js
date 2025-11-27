@@ -17,7 +17,7 @@ async getAlbums(filter = {}, options = {}) {
       .populate('artist', '_id id name bandName profileImage')
       .sort({ createdAt: -1 });
 
-    const limit = parseInt(options.limit) || 0;
+    const limit = Number.parseInt(options.limit) || 0;
     if (limit > 0) query.limit(limit);
 
     return await query;
@@ -36,8 +36,8 @@ async getAlbums(filter = {}, options = {}) {
       
       // Si no es un ObjectId válido (ejemplo: id numérico como string "2")
       // Intentar buscar por otros campos
-      const numericId = parseInt(id);
-      if (!isNaN(numericId)) {
+      const numericId = Number.parseInt(id);
+      if (!Number.isNaN(numericId)) {
         // Buscar por campo id numérico si existe, también con populate
         const albumByNumericId = await Album.findOne({ id: numericId })
           .populate('artist', '_id id name bandName profileImage genre bio'); // Incluir tanto _id como id numérico
