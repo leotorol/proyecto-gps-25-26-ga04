@@ -193,7 +193,7 @@ const ExplorePage = () => {
               </Link>
             </Typography>
             <Typography variant="body2" className="track-info">
-              Duración: {track.duration}
+              {`Duración: ${track.duration}`}
             </Typography>
           </div>
         </Grid2>
