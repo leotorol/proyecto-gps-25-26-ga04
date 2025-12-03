@@ -201,6 +201,12 @@ const ExplorePage = () => {
     </Grid2>
   );
 
+  // Handle image load error
+  const handleImageError = (e) => {
+    e.target.onerror = null;
+    e.target.src = '/assets/images/default-avatar.jpg';
+  };
+
   // Render an artist item
   const renderArtistItem = (artist) => (
     <Grid2 key={artist.id} className="item-container">
@@ -222,10 +228,7 @@ const ExplorePage = () => {
               alt={artist.name}
               className="album-image"
               style={{ width: '100%', height: '100%', borderRadius: '8px' }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/assets/images/default-avatar.jpg';
-              }}
+              onError={handleImageError}
             />
           </div>
         </Grid2>
