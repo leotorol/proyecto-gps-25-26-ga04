@@ -3,9 +3,9 @@ import { useParams } from 'react-router-dom';
 import { Typography, Box } from '@mui/material';
 import { getNewsById } from '../services/newsService';
 import '../styles/newspage.css';
-
+//si
 const News = () => {
-  const { noticiaId } = useParams();  // Capturamos el parámetro noticiaId desde la URL
+  const { noticiaId } = useParams(); 
   const [noticia, setNoticia] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
