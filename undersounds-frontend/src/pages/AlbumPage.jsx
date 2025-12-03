@@ -24,7 +24,7 @@ import { PlayerContext } from '../context/PlayerContext';
 import { CartContext } from '../context/CartContext';
 import { AuthContext } from '../context/AuthContext';
 import defaultImage from '../assets/images/botonPlay.jpg';
-import { fetchAlbumById, fetchTracklist, fetchAlbums } from '../services/jamendoService';
+import { fetchAlbumById, fetchTracklist } from '../services/jamendoService';
 import axios from 'axios';
 
 const ProfileImage = 'https://via.placeholder.com/40';
