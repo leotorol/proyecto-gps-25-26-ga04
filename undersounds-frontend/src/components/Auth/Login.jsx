@@ -171,7 +171,7 @@ export default function Login(props) {
             }}
           >
             <FormControl>
-              <FormLabel htmlFor="email">Correo electrónico</FormLabel>
+              <FormLabel htmlFor="email">{"Correo electrónico"}</FormLabel>
               <TextField
                 id="email"
                 type="email"
@@ -189,7 +189,7 @@ export default function Login(props) {
               />
             </FormControl>
             <FormControl>
-              <FormLabel htmlFor="password">Contraseña</FormLabel>
+              <FormLabel htmlFor="password">{"Contraseña"}</FormLabel>
               <TextField
                 name="password"
                 placeholder="••••••"
