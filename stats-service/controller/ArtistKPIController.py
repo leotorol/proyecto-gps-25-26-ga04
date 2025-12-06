@@ -429,57 +429,64 @@ async def recommend_for_user(user_id: str, limit: int = 20):
     return await _get_cached(key, _compute)
 
 async def _fetch_albums_by_genres(genres: list, limit: int) -> list:
-    results = []
     async with httpx.AsyncClient() as client:
-        for r in rows:
-            eid = r.get("_id")
-            count = r.get("count", 0)
-            entry = {"id": eid, "count": count, "type": None, "title": None, "artist": None, "albumId": None, "albumTitle": None}
+        results = []
+        for genre in genres:
+            genre_results = await _fetch_albums_for_genre(client, genre, limit)
+            results.extend(genre_results)
+        return results[:limit]
 
-            if not eid:
-                enriched.append(entry)
-                continue
+async def _fetch_albums_for_genre(client: httpx.AsyncClient, genre: str, limit: int) -> list:
+    # Si el género parece ser una pista (formato especial)
+    if "_" in str(genre):
+        track_result = await _resolve_track_entry(client, genre)
+        return [track_result] if track_result else []
+    # Si es un género normal, buscar álbumes
+    return await _resolve_album_entries(client, genre, limit)
 
-            # Caso pista con formato "albumId_trackId" o "albumId_trackIndex"
-            if "_" in str(eid):
-                try:
-                    album_id, track_key = str(eid).split("_", 1)
-                    resp = await http_get_with_cb(client, f"{CONTENT_SERVICE_URL}/api/albums/{album_id}", timeout=5)
-                    if resp.status_code == 200:
-                        album = resp.json()
-                        tracks = album.get("tracks", []) or []
-                        # buscar por id o por índice
-                        track_obj = next((t for t in tracks if str(t.get("id")) == str(track_key) or str(t.get("_id")) == str(track_key)), None)
-                        if not track_obj and track_key.isdigit():
-                            idx = int(track_key) - 1
-                            if 0 <= idx < len(tracks):
-                                track_obj = tracks[idx]
-                        if track_obj:
-                            entry.update({
-                                "type": "track",
-                                "title": track_obj.get("title") or track_obj.get("name"),
-                                "artist": album.get("artist") or album.get("artistName"),
-                                "albumId": album_id,
-                                "albumTitle": album.get("title") or album.get("name")
-                            })
-                            enriched.append(entry)
-                            continue
-                except HTTPException:
-                    raise
-                except Exception:
-                    pass
+async def _resolve_track_entry(client: httpx.AsyncClient, eid: str) -> dict:
+    try:
+        album_id, track_key = eid.split("_", 1)
+        resp = await http_get_with_cb(client, f"{CONTENT_SERVICE_URL}/api/albums/{album_id}", timeout=5)
+        if resp.status_code != 200:
+            return None
+        album = resp.json()
+        tracks = album.get("tracks", []) or []
+        track_obj = next((t for t in tracks if str(t.get("id")) == str(track_key) or str(t.get("_id")) == str(track_key)), None)
+        if not track_obj and track_key.isdigit():
+            idx = int(track_key) - 1
+            if 0 <= idx < len(tracks):
+                track_obj = tracks[idx]
+        if track_obj:
+            return {
+                "id": eid,
+                "type": "track",
+                "title": track_obj.get("title") or track_obj.get("name"),
+                "artist": album.get("artist") or album.get("artistName"),
+                "albumId": album_id,
+                "albumTitle": album.get("title") or album.get("name"),
+                "count": None
+            }
+    except Exception:
+        return None
+    return None
 
-            # Intentar resolver como álbum
-            try:
-                resp = await http_get_with_cb(client, f"{CONTENT_SERVICE_URL}/api/albums?genre={g}&limit={limit}", timeout=5)
-                if resp.status_code == 200:
-                    for it in resp.json()[:limit]:
-                        results.append({"id": it.get("_id") or it.get("id"), "type": "album", "reason": f"genre:{g}", "score": 1.0})
-            except HTTPException:
-                raise
-            except Exception:
-                pass
-    return results
+async def _resolve_album_entries(client: httpx.AsyncClient, genre: str, limit: int) -> list:
+    try:
+        resp = await http_get_with_cb(client, f"{CONTENT_SERVICE_URL}/api/albums?genre={genre}&limit={limit}", timeout=5)
+        if resp.status_code != 200:
+            return []
+        return [
+            {
+                "id": it.get("_id") or it.get("id"),
+                "type": "album",
+                "reason": f"genre:{genre}",
+                "score": 1.0
+            }
+            for it in resp.json()[:limit]
+        ]
+    except Exception:
+        return []
 
 async def _fallback_popular_artists(limit: int) -> list:
     top = await EventDAO.aggregate_by_entity("artist", since=None, limit=limit)
